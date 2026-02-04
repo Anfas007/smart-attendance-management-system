@@ -1,0 +1,149 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Attendance | Attendance System</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for a modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons for nice icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        /* Use the Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f9ff; /* A nice light blue */
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="flex flex-col min-h-screen">
+        <!-- Top Navigation Bar (Consistent with Student Dashboard) -->
+        <nav class="bg-white shadow-md w-full sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center">
+                        <a href="{% url 'student_dashboard' %}" class="flex-shrink-0 text-xl font-bold text-blue-600">
+                           Student Dashboard
+                        </a>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-4">
+                        <a href="{% url 'student_dashboard' %}" class="text-gray-600 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+                            <i data-lucide="home" class="w-4 h-4 mr-2"></i> Home
+                        </a>
+                        <a href="{% url 'attendance' %}" class="bg-blue-100 text-blue-700 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+                           <i data-lucide="calendar-check" class="w-4 h-4 mr-2"></i> Attendance
+                        </a>
+                        <a href="{% url 'courses' %}" class="text-gray-600 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+                             <i data-lucide="book-open" class="w-4 h-4 mr-2"></i> Courses
+                        </a>
+                        <a href="{% url 'apply_leave' %}" class="text-gray-600 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+                            <i data-lucide="file-plus-2" class="w-4 h-4 mr-2"></i> Apply Leave
+                        </a>
+                        <form method="POST" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="text-red-500 hover:bg-red-100 hover:text-red-700 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+                                <i data-lucide="log-out" class="w-4 h-4 mr-2"></i> Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 lg:p-10">
+            <div class="max-w-7xl mx-auto">
+                <header class="mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900">My Attendance</h1>
+                    <p class="text-gray-500 mt-1">A detailed log of your attendance records.</p>
+                </header>
+
+                <!-- Attendance Table -->
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-50 text-gray-500 uppercase">
+                                <tr>
+                                    <th class="p-4">Date</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Check-in Time</th>
+                                    <th class="p-4">Check-out Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in records %}
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="p-4 font-medium">{{ record.date|date }}</td>
+                                    <td class="p-4">
+                                        {% if record.status == "present" %}
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                Present
+                                            </span>
+                                        {% elif record.status == "absent" %}
+                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                Absent
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                Late
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="p-4 text-gray-600">{{ record.check_in_time|default:"--" }}</td>
+                                    <td class="p-4 text-gray-600">{{ record.check_out_time|default:"--" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center p-6 text-gray-500">
+                                        You have no attendance records yet.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Script to initialize icons -->
+    <script>
+        lucide.createIcons();
+
+        // SweetAlert2 - Display Django Messages
+        {% if messages %}
+            {% for message in messages %}
+                Swal.fire({
+                    title: '{% if message.tags == "success" %}Success!{% elif message.tags == "error" %}Error!{% elif message.tags == "warning" %}Warning!{% elif message.tags == "info" %}Info{% else %}Notice{% endif %}',
+                    html: '{{ message|escapejs }}',
+                    icon: '{% if message.tags == "success" %}success{% elif message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% elif message.tags == "info" %}info{% else %}info{% endif %}',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '{% if message.tags == "success" %}#10b981{% elif message.tags == "error" %}#ef4444{% elif message.tags == "warning" %}#f59e0b{% else %}#3b82f6{% endif %}',
+                    timer: {% if message.tags == "success" %}3000{% else %}5000{% endif %},
+                    timerProgressBar: true,
+                    showClass: {
+                        popup: 'animate__animated animate__fadeInDown'
+                    },
+                    hideClass: {
+                        popup: 'animate__animated animate__fadeOutUp'
+                    }
+                });
+            {% endfor %}
+        {% endif %}
+    </script>
+
+</body>
+</html>

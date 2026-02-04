@@ -1,0 +1,65 @@
+{% extends "core/base_admin.html" %}
+{% load static %}
+
+{% block title %}Manage Semesters{% endblock %}
+
+{% block content %}
+<header class="flex justify-between items-center mb-8">
+    <div class="flex items-center space-x-4">
+         <button id="openSidebar" class="md:hidden mr-4 text-slate-700 hover:text-slate-900">
+             <i data-lucide="menu" class="w-6 h-6"></i>
+         </button>
+        <h1 class="text-2xl font-bold text-blue-700">Manage Semesters</h1>
+    </div>
+    <!-- Add New Semester Button moved to header -->
+    <a href="{% url 'add_semester' %}" class="inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        <i data-lucide="graduation-cap" class="w-5 h-5 mr-2"></i>
+        Add New Semester
+    </a>
+</header>
+
+<!-- Removed the grid layout, list now takes full width -->
+<div class="bg-white p-6 rounded-xl shadow-md">
+    <h2 class="text-xl font-semibold mb-4 text-slate-800">Existing Semesters</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
+                <tr>
+                    <th class="p-4">Semester Name</th>
+                    <th class="p-4 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for semester in semesters %}
+                <tr class="border-b hover:bg-slate-50">
+                    <td class="p-4 text-sm text-gray-700">{{ semester.name }}</td>
+                    <td class="p-4 text-right space-x-2">
+                        <!-- Placeholder Edit Button -->
+                        <button class="inline-flex items-center justify-center p-1.5 text-blue-600 bg-blue-50 border border-blue-200 rounded-md opacity-50 cursor-not-allowed" disabled title="Edit (Not implemented)">
+                            <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <!-- Placeholder Delete Button -->
+                        <button class="inline-flex items-center justify-center p-1.5 text-red-600 bg-red-50 border border-red-200 rounded-md opacity-50 cursor-not-allowed" disabled title="Delete (Not implemented)">
+                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2" class="p-4 text-center text-gray-500">No semesters found. Click "Add New Semester" to get started.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Re-initialize icons if dynamically added
+    lucide.createIcons();
+</script>
+{% endblock %}
+

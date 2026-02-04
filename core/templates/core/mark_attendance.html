@@ -1,0 +1,548 @@
+{% extends "core/base_admin.html" %}
+{% load static %}
+
+{% block title %}Mark Attendance{% endblock %}
+
+{% block extra_styles %}
+<style>
+    #videoFeed {
+        width: 100%;
+        max-width: 640px; /* Limit video size */
+        height: auto;
+        border: 1px solid #ccc;
+        border-radius: 0.5rem; /* Match card style */
+        background-color: #e2e8f0; /* Placeholder color */
+    }
+    .status-box {
+        min-height: 80px; /* Ensure space for messages */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="flex justify-between items-center mb-8">
+    <div class="flex items-center space-x-4">
+         <button id="openSidebar" class="md:hidden mr-4 text-slate-700 hover:text-slate-900">
+             <i data-lucide="menu" class="w-6 h-6"></i>
+         </button>
+        <h1 class="text-2xl font-bold text-blue-700">Mark Attendance</h1>
+    </div>
+    <!-- No Add button needed here -->
+</header>
+
+<div class="space-y-8">
+
+    <!-- Face Recognition Section -->
+    <div class="bg-white p-6 rounded-xl shadow-md">
+        <h2 class="text-xl font-semibold mb-4 text-slate-800">Face Recognition Attendance</h2>
+        <div class="flex flex-col md:flex-row gap-6 items-start">
+            <!-- Video Feed -->
+            <div class="w-full md:w-2/3">
+                 <video id="videoFeed" playsinline autoplay muted></video>
+                 <canvas id="canvas" style="display: none;"></canvas> <!-- Hidden canvas for processing -->
+                 <div class="mt-4 text-center">
+                     <button id="startStopButton" class="inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Start Recognition</button>
+                 </div>
+            </div>
+            <!-- Status Display -->
+            <div class="w-full md:w-1/3 status-box bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <h3 class="font-semibold text-slate-700 mb-2">Recognition Status:</h3>
+                <div id="recognition-status" class="text-sm text-gray-600">
+                    Camera feed stopped. Click "Start Recognition".
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons(); // Initialize any icons added in this template
+
+    const videoElement = document.getElementById('videoFeed');
+    const canvasElement = document.getElementById('canvas');
+    const statusElement = document.getElementById('recognition-status');
+    const startStopButton = document.getElementById('startStopButton');
+    const recognizeUrl = "/dashboard/recognize-face/"; // Django URL for the API
+    const csrfToken = "{{ csrf_token }}"; // CSRF token
+
+    let stream = null;
+    let processingInterval = null;
+    let isProcessing = false; // Flag to prevent overlapping requests
+    let animationFrameId = null; // To control the loop
+
+    // Function to start the camera feed
+    async function startCamera() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+            videoElement.srcObject = stream;
+            videoElement.play(); // Ensure video plays
+            statusElement.textContent = 'Camera started. Processing frames...';
+            startStopButton.textContent = 'Stop Recognition';
+            startStopButton.className = 'inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2';
+            
+            // Start processing loop
+            isProcessing = false; // Reset flag
+            cancelAnimationFrame(animationFrameId); // Clear previous loop if any
+            processFrames(); // Start the loop
+
+        } catch (err) {
+            console.error("Error accessing camera:", err);
+            statusElement.textContent = `Error accessing camera: ${err.name}. Check permissions.`;
+            startStopButton.textContent = 'Start Recognition';
+            startStopButton.className = 'inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2';
+        }
+    }
+
+    // Function to stop the camera feed and processing
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            videoElement.srcObject = null;
+            stream = null;
+        }
+        cancelAnimationFrame(animationFrameId); // Stop the processing loop
+        animationFrameId = null;
+        statusElement.textContent = 'Camera feed stopped.';
+        startStopButton.textContent = 'Start Recognition';
+        startStopButton.className = 'inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2';
+        console.log("Camera and processing stopped.");
+    }
+
+    // Function to capture frame, send to backend, and handle response
+    async function captureAndRecognize() {
+        if (isProcessing || !stream || videoElement.paused || videoElement.ended) return; // Prevent overlap or processing stopped video
+
+        isProcessing = true; // Set flag
+
+        // Draw video frame onto canvas
+        const context = canvasElement.getContext('2d');
+        canvasElement.width = videoElement.videoWidth;
+        canvasElement.height = videoElement.videoHeight;
+        context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+
+        // Convert canvas to base64 data URL
+        const imageDataUrl = canvasElement.toDataURL('image/jpeg', 0.8); // Use JPEG, adjust quality if needed
+
+        try {
+             const response = await fetch(recognizeUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken // Include CSRF token
+                },
+                body: JSON.stringify({ image_data: imageDataUrl })
+            });
+
+            if (!response.ok) {
+                console.error("API Error:", response.status, await response.text());
+                statusElement.textContent = `Error ${response.status}: Failed to process frame. Check server logs.`;
+                // Optionally stop on critical errors?
+                // stopCamera(); 
+            } else {
+                const result = await response.json();
+                console.log("Recognition result:", result); // Debugging
+
+                // Update status display based on backend response
+                if (result.status === 'success') {
+                    statusElement.innerHTML = `<span class="text-green-600 font-semibold">Recognized: ${result.name}</span><br><span class="text-sm">${result.attendance_status}</span>`;
+                } else if (result.status === 'not_recognized') {
+                    statusElement.textContent = 'Face detected, but not recognized.';
+                } else if (result.status === 'no_face') {
+                    statusElement.textContent = 'No face detected in the frame.';
+                } else if (result.status === 'error') {
+                    statusElement.textContent = `Error: ${result.message}`;
+                } else {
+                     statusElement.textContent = 'Processing...'; // Default/idle
+                }
+            }
+        } catch (error) {
+            console.error("Fetch Error:", error);
+            statusElement.textContent = 'Network error or server unavailable.';
+            // Optionally stop on network errors?
+            // stopCamera(); 
+        } finally {
+            isProcessing = false; // Reset flag after request completes (or fails)
+        }
+    }
+
+    // Processing loop using requestAnimationFrame
+    function processFrames() {
+         if (!stream) return; // Stop loop if stream is stopped
+
+         captureAndRecognize().then(() => {
+             // Schedule the next frame processing
+             // Adjust delay if needed (e.g., wrap in setTimeout for less frequent calls)
+             animationFrameId = requestAnimationFrame(processFrames); 
+         }).catch(error => {
+             console.error("Error in capture/recognize:", error);
+              // Optionally stop loop on error or just continue
+             animationFrameId = requestAnimationFrame(processFrames); 
+         });
+    }
+
+
+    // Event listener for the button
+    startStopButton.addEventListener('click', () => {
+        if (stream) {
+            stopCamera();
+        } else {
+            startCamera();
+        }
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', stopCamera);
+
+</script>
+{% endblock %}</header>
+
+
+
+<div class="space-y-8"><div class="space-y-8">
+
+
+
+    <!-- Face Recognition Section -->    <!-- Face Recognition Section -->
+
+    <div class="bg-white p-6 rounded-xl shadow-md">    <div class="bg-white p-6 rounded-xl shadow-md">
+
+        <h2 class="text-xl font-semibold mb-4 text-slate-800">Face Recognition Attendance</h2>        <h2 class="text-xl font-semibold mb-4 text-slate-800">Face Recognition Attendance</h2>
+
+        <div class="flex flex-col md:flex-row gap-6 items-start">        <div class="flex flex-col md:flex-row gap-6 items-start">
+
+            <!-- Video Feed -->            <!-- Video Feed -->
+
+            <div class="w-full md:w-2/3">            <div class="w-full md:w-2/3">
+
+                 <video id="videoFeed" playsinline autoplay muted></video>                 <video id="videoFeed" playsinline autoplay muted></video>
+
+                 <canvas id="canvas" style="display: none;"></canvas> <!-- Hidden canvas for processing -->                 <canvas id="canvas" style="display: none;"></canvas> <!-- Hidden canvas for processing -->
+
+                 <div class="mt-4 text-center">                 <div class="mt-4 text-center">
+
+                     <button id="startStopButton" class="inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Start Recognition</button>                     <button id="startStopButton" class="inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Start Recognition</button>
+
+                 </div>                 </div>
+
+            </div>            </div>
+
+            <!-- Status Display -->            <!-- Status Display -->
+
+            <div class="w-full md:w-1/3 status-box bg-slate-50 p-4 rounded-lg border border-slate-200">            <div class="w-full md:w-1/3 status-box bg-slate-50 p-4 rounded-lg border border-slate-200">
+
+                <h3 class="font-semibold text-slate-700 mb-2">Recognition Status:</h3>                <h3 class="font-semibold text-slate-700 mb-2">Recognition Status:</h3>
+
+                <div id="recognition-status" class="text-sm text-gray-600">                <div id="recognition-status" class="text-sm text-gray-600">
+
+                    Camera feed stopped. Click "Start Recognition".                    Camera feed stopped. Click "Start Recognition".
+
+                </div>                </div>
+
+            </div>            </div>
+
+        </div>        </div>
+
+    </div>    </div>
+
+
+
+    </div>    </div>
+
+
+
+</div></div>
+
+
+
+{% endblock %}{% endblock %}
+
+
+
+{% block extra_js %}{% block extra_js %}
+
+<script><script>
+
+    lucide.createIcons(); // Initialize any icons added in this template    lucide.createIcons(); // Initialize any icons added in this template
+
+
+
+    const videoElement = document.getElementById('videoFeed');    const videoElement = document.getElementById('videoFeed');
+
+    const canvasElement = document.getElementById('canvas');    const canvasElement = document.getElementById('canvas');
+
+    const statusElement = document.getElementById('recognition-status');    const statusElement = document.getElementById('recognition-status');
+
+    const startStopButton = document.getElementById('startStopButton');    const startStopButton = document.getElementById('startStopButton');
+
+    const recognizeUrl = "/dashboard/recognize-face/"; // Django URL for the API    const recognizeUrl = "/dashboard/recognize-face/"; // Django URL for the API
+
+    const csrfToken = "{{ csrf_token }}"; // CSRF token    const csrfToken = "{{ csrf_token }}"; // CSRF token
+
+
+
+    let stream = null;    let stream = null;
+
+    let processingInterval = null;    let processingInterval = null;
+
+    let isProcessing = false; // Flag to prevent overlapping requests    let isProcessing = false; // Flag to prevent overlapping requests
+
+    let animationFrameId = null; // To control the loop    let animationFrameId = null; // To control the loop
+
+
+
+    // Function to start the camera feed    // Function to start the camera feed
+
+    async function startCamera() {    async function startCamera() {
+
+        try {        try {
+
+            stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });            stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+
+            videoElement.srcObject = stream;            videoElement.srcObject = stream;
+
+            videoElement.play(); // Ensure video plays            videoElement.play(); // Ensure video plays
+
+            statusElement.textContent = 'Camera started. Processing frames...';            statusElement.textContent = 'Camera started. Processing frames...';
+
+            startStopButton.textContent = 'Stop Recognition';            startStopButton.textContent = 'Stop Recognition';
+
+            startStopButton.className = 'inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2';            startStopButton.className = 'inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2';
+
+            
+
+            // Start processing loop            // Start processing loop
+
+            isProcessing = false; // Reset flag            isProcessing = false; // Reset flag
+
+            cancelAnimationFrame(animationFrameId); // Clear previous loop if any            cancelAnimationFrame(animationFrameId); // Clear previous loop if any
+
+            processFrames(); // Start the loop            processFrames(); // Start the loop
+
+
+
+        } catch (err) {        } catch (err) {
+
+            console.error("Error accessing camera:", err);            console.error("Error accessing camera:", err);
+
+            statusElement.textContent = `Error accessing camera: ${err.name}. Check permissions.`;            statusElement.textContent = `Error accessing camera: ${err.name}. Check permissions.`;
+
+            startStopButton.textContent = 'Start Recognition';            startStopButton.textContent = 'Start Recognition';
+
+            startStopButton.className = 'inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2';            startStopButton.className = 'inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2';
+
+        }        }
+
+    }    }
+
+
+
+    // Function to stop the camera feed and processing    // Function to stop the camera feed and processing
+
+    function stopCamera() {    function stopCamera() {
+
+        if (stream) {        if (stream) {
+
+            stream.getTracks().forEach(track => track.stop());            stream.getTracks().forEach(track => track.stop());
+
+            videoElement.srcObject = null;            videoElement.srcObject = null;
+
+            stream = null;            stream = null;
+
+        }        }
+
+        cancelAnimationFrame(animationFrameId); // Stop the processing loop        cancelAnimationFrame(animationFrameId); // Stop the processing loop
+
+        animationFrameId = null;        animationFrameId = null;
+
+        statusElement.textContent = 'Camera feed stopped.';        statusElement.textContent = 'Camera feed stopped.';
+
+        startStopButton.textContent = 'Start Recognition';        startStopButton.textContent = 'Start Recognition';
+
+        startStopButton.className = 'inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2';        startStopButton.className = 'inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2';
+
+        console.log("Camera and processing stopped.");        console.log("Camera and processing stopped.");
+
+    }    }
+
+
+
+    // Function to capture frame, send to backend, and handle response    // Function to capture frame, send to backend, and handle response
+
+    async function captureAndRecognize() {    async function captureAndRecognize() {
+
+        if (isProcessing || !stream || videoElement.paused || videoElement.ended) return; // Prevent overlap or processing stopped video        if (isProcessing || !stream || videoElement.paused || videoElement.ended) return; // Prevent overlap or processing stopped video
+
+
+
+        isProcessing = true; // Set flag        isProcessing = true; // Set flag
+
+
+
+        // Draw video frame onto canvas        // Draw video frame onto canvas
+
+        const context = canvasElement.getContext('2d');        const context = canvasElement.getContext('2d');
+
+        canvasElement.width = videoElement.videoWidth;        canvasElement.width = videoElement.videoWidth;
+
+        canvasElement.height = videoElement.videoHeight;        canvasElement.height = videoElement.videoHeight;
+
+        context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);        context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+
+
+
+        // Convert canvas to base64 data URL        // Convert canvas to base64 data URL
+
+        const imageDataUrl = canvasElement.toDataURL('image/jpeg', 0.8); // Use JPEG, adjust quality if needed        const imageDataUrl = canvasElement.toDataURL('image/jpeg', 0.8); // Use JPEG, adjust quality if needed
+
+
+
+        try {        try {
+
+             const response = await fetch(recognizeUrl, {             const response = await fetch(recognizeUrl, {
+
+                method: 'POST',                method: 'POST',
+
+                headers: {                headers: {
+
+                    'Content-Type': 'application/json',                    'Content-Type': 'application/json',
+
+                    'X-CSRFToken': csrfToken // Include CSRF token                    'X-CSRFToken': csrfToken // Include CSRF token
+
+                },                },
+
+                body: JSON.stringify({ image_data: imageDataUrl })                body: JSON.stringify({ image_data: imageDataUrl })
+
+            });            });
+
+
+
+            if (!response.ok) {            if (!response.ok) {
+
+                console.error("API Error:", response.status, await response.text());                console.error("API Error:", response.status, await response.text());
+
+                statusElement.textContent = `Error ${response.status}: Failed to process frame. Check server logs.`;                statusElement.textContent = `Error ${response.status}: Failed to process frame. Check server logs.`;
+
+                // Optionally stop on critical errors?                // Optionally stop on critical errors?
+
+                // stopCamera();                // stopCamera(); 
+
+            } else {            } else {
+
+                const result = await response.json();                const result = await response.json();
+
+                console.log("Recognition result:", result); // Debugging                console.log("Recognition result:", result); // Debugging
+
+
+
+                // Update status display based on backend response                // Update status display based on backend response
+
+                if (result.status === 'success') {                if (result.status === 'success') {
+
+                    statusElement.innerHTML = `<span class="text-green-600 font-semibold">Recognized: ${result.name}</span><br><span class="text-sm">${result.attendance_status}</span>`;                    statusElement.innerHTML = `<span class="text-green-600 font-semibold">Recognized: ${result.name}</span><br><span class="text-sm">${result.attendance_status}</span>`;
+
+                } else if (result.status === 'not_recognized') {                } else if (result.status === 'not_recognized') {
+
+                    statusElement.textContent = 'Face detected, but not recognized.';                    statusElement.textContent = 'Face detected, but not recognized.';
+
+                } else if (result.status === 'no_face') {                } else if (result.status === 'no_face') {
+
+                    statusElement.textContent = 'No face detected in the frame.';                    statusElement.textContent = 'No face detected in the frame.';
+
+                } else if (result.status === 'error') {                } else if (result.status === 'error') {
+
+                    statusElement.textContent = `Error: ${result.message}`;                    statusElement.textContent = `Error: ${result.message}`;
+
+                } else {                } else {
+
+                     statusElement.textContent = 'Processing...'; // Default/idle                     statusElement.textContent = 'Processing...'; // Default/idle
+
+                }                }
+
+            }            }
+
+        } catch (error) {        } catch (error) {
+
+            console.error("Fetch Error:", error);            console.error("Fetch Error:", error);
+
+            statusElement.textContent = 'Network error or server unavailable.';            statusElement.textContent = 'Network error or server unavailable.';
+
+            // Optionally stop on network errors?            // Optionally stop on network errors?
+
+            // stopCamera();            // stopCamera(); 
+
+        } finally {        } finally {
+
+            isProcessing = false; // Reset flag after request completes (or fails)            isProcessing = false; // Reset flag after request completes (or fails)
+
+        }        }
+
+    }    }
+
+
+
+    // Processing loop using requestAnimationFrame    // Processing loop using requestAnimationFrame
+
+    function processFrames() {    function processFrames() {
+
+         if (!stream) return; // Stop loop if stream is stopped         if (!stream) return; // Stop loop if stream is stopped
+
+
+
+         captureAndRecognize().then(() => {         captureAndRecognize().then(() => {
+
+             // Schedule the next frame processing             // Schedule the next frame processing
+
+             // Adjust delay if needed (e.g., wrap in setTimeout for less frequent calls)             // Adjust delay if needed (e.g., wrap in setTimeout for less frequent calls)
+
+             animationFrameId = requestAnimationFrame(processFrames);             animationFrameId = requestAnimationFrame(processFrames); 
+
+         }).catch(error => {         }).catch(error => {
+
+             console.error("Error in capture/recognize:", error);             console.error("Error in capture/recognize:", error);
+
+              // Optionally stop loop on error or just continue              // Optionally stop loop on error or just continue
+
+             animationFrameId = requestAnimationFrame(processFrames);             animationFrameId = requestAnimationFrame(processFrames); 
+
+         });         });
+
+    }    }
+
+
+
+
+
+    // Event listener for the button    // Event listener for the button
+
+    startStopButton.addEventListener('click', () => {    startStopButton.addEventListener('click', () => {
+
+        if (stream) {        if (stream) {
+
+            stopCamera();            stopCamera();
+
+        } else {        } else {
+
+            startCamera();            startCamera();
+
+        }        }
+
+    });    });
+
+
+
+    // Cleanup on page unload    // Cleanup on page unload
+
+    window.addEventListener('beforeunload', stopCamera);    window.addEventListener('beforeunload', stopCamera);
+
+
+
+</script></script>
+
+{% endblock %}{% endblock %}
+

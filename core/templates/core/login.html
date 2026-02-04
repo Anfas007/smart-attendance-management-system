@@ -1,0 +1,73 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Attendance System</title>
+    <!-- Link your CSS -->
+    <link rel="stylesheet" href="{% static 'core/style.css' %}">
+    
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Login</h1>
+
+        <!-- Display error messages if any -->
+        {% if form.errors %}
+            <div class="error-message">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_username">Username</label>
+                <input type="text" name="username" id="id_username" placeholder="Enter username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="id_password">Password</label>
+                <input type="password" name="password" id="id_password" placeholder="Enter password" required>
+            </div>
+
+            <button type="submit" class="btn-login">Login</button>
+        </form>
+    </div>
+</body>
+
+<!-- SweetAlert2 - Display Django Messages -->
+<script>
+    {% if messages %}
+        {% for message in messages %}
+            Swal.fire({
+                title: '{% if message.tags == "success" %}Success!{% elif message.tags == "error" %}Error!{% elif message.tags == "warning" %}Warning!{% elif message.tags == "info" %}Info{% else %}Notice{% endif %}',
+                html: '{{ message|escapejs }}',
+                icon: '{% if message.tags == "success" %}success{% elif message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% elif message.tags == "info" %}info{% else %}info{% endif %}',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '{% if message.tags == "success" %}#10b981{% elif message.tags == "error" %}#ef4444{% elif message.tags == "warning" %}#f59e0b{% else %}#3b82f6{% endif %}',
+                timer: {% if message.tags == "success" %}3000{% else %}5000{% endif %},
+                timerProgressBar: true,
+                showClass: {
+                    popup: 'animate__animated animate__fadeInDown'
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__fadeOutUp'
+                }
+            });
+        {% endfor %}
+    {% endif %}
+</script>
+
+</html>

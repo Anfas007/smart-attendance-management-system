@@ -1,0 +1,170 @@
+{% extends "core/base_admin.html" %}
+
+{% block title %}{% if camera %}Edit Camera{% else %}Add New Camera{% endif %}{% endblock %}
+
+{% block content %}
+<header class="flex justify-between items-center mb-8">
+    <h1 class="text-2xl font-bold text-blue-700">{% if camera %}Edit Camera{% else %}Add New Camera{% endif %}</h1>
+    <a href="{% url 'manage_cameras' %}" class="text-sm font-medium text-blue-600 hover:text-blue-500">
+        &larr; Back to Manage Cameras
+    </a>
+</header>
+
+<div class="bg-white p-6 rounded-xl shadow-md">
+    <form method="POST" id="cameraForm">
+        {% csrf_token %}
+        
+        <!-- Camera Type Selection -->
+        <div class="mb-4">
+            <label for="camera_type" class="block text-sm font-medium text-gray-700 mb-1">Camera Type</label>
+            <select id="camera_type" name="camera_type" required
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="usb" {% if camera.camera_type == 'usb' or form_values.camera_type == 'usb' %}selected{% endif %}>USB Camera</option>
+                <option value="ip" {% if camera.camera_type == 'ip' or form_values.camera_type == 'ip' %}selected{% endif %}>IP Camera (Network/RTSP)</option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Camera Name</label>
+            <input type="text" id="name" name="name" placeholder="e.g., Main Entrance Camera" required
+                   value="{% if camera %}{{ camera.name }}{% elif form_values.name %}{{ form_values.name }}{% endif %}"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+
+        <div class="mb-4">
+            <label for="location" class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+            <input type="text" id="location" name="location" placeholder="e.g., Main Entrance, Library Room 2" required
+                   value="{% if camera %}{{ camera.location }}{% elif form_values.location %}{{ form_values.location }}{% endif %}"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+
+        <!-- USB Camera Settings (shown when USB is selected) -->
+        <div id="usb_settings" class="border-t pt-4 mt-4">
+            <h3 class="text-md font-semibold text-gray-700 mb-3">USB Camera Settings</h3>
+            <div class="mb-4">
+                <label for="device_index" class="block text-sm font-medium text-gray-700 mb-1">Device Index</label>
+                <input type="number" id="device_index" name="device_index" min="0" max="10"
+                       value="{% if camera %}{{ camera.device_index }}{% elif form_values.device_index %}{{ form_values.device_index }}{% else %}0{% endif %}"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <p class="mt-1 text-xs text-gray-500">Usually 0 for the first USB camera, 1 for the second, etc.</p>
+            </div>
+        </div>
+
+        <!-- IP Camera Settings (shown when IP is selected) -->
+        <div id="ip_settings" class="border-t pt-4 mt-4" style="display: none;">
+            <h3 class="text-md font-semibold text-gray-700 mb-3">IP Camera Settings</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label for="ip_address" class="block text-sm font-medium text-gray-700 mb-1">IP Address</label>
+                    <input type="text" id="ip_address" name="ip_address" placeholder="e.g., 192.168.1.100"
+                           value="{% if camera %}{{ camera.ip_address }}{% elif form_values.ip_address %}{{ form_values.ip_address }}{% endif %}"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div class="mb-4">
+                    <label for="port" class="block text-sm font-medium text-gray-700 mb-1">Port (Optional)</label>
+                    <input type="number" id="port" name="port" placeholder="e.g., 554, 8080"
+                           value="{% if camera %}{{ camera.port }}{% elif form_values.port %}{{ form_values.port }}{% endif %}"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+            </div>
+            <div class="mb-4">
+                <label for="stream_url" class="block text-sm font-medium text-gray-700 mb-1">Stream URL</label>
+                <input type="text" id="stream_url" name="stream_url" placeholder="e.g., rtsp://admin:password@192.168.1.100:554/stream"
+                       value="{% if camera %}{{ camera.stream_url }}{% elif form_values.stream_url %}{{ form_values.stream_url }}{% endif %}"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <p class="mt-1 text-xs text-gray-500">Full RTSP/HTTP stream URL for the IP camera</p>
+            </div>
+        </div>
+
+        <!-- Common Settings -->
+        <div class="border-t pt-4 mt-4">
+            <h3 class="text-md font-semibold text-gray-700 mb-3">Additional Settings</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="mb-4">
+                    <label for="resolution_width" class="block text-sm font-medium text-gray-700 mb-1">Width</label>
+                    <input type="number" id="resolution_width" name="resolution_width" min="320" max="3840"
+                           value="{% if camera %}{{ camera.resolution_width }}{% elif form_values.resolution_width %}{{ form_values.resolution_width }}{% else %}640{% endif %}"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div class="mb-4">
+                    <label for="resolution_height" class="block text-sm font-medium text-gray-700 mb-1">Height</label>
+                    <input type="number" id="resolution_height" name="resolution_height" min="240" max="2160"
+                           value="{% if camera %}{{ camera.resolution_height }}{% elif form_values.resolution_height %}{{ form_values.resolution_height }}{% else %}480{% endif %}"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div class="mb-4">
+                    <label for="fps" class="block text-sm font-medium text-gray-700 mb-1">FPS</label>
+                    <input type="number" id="fps" name="fps" min="1" max="60"
+                           value="{% if camera %}{{ camera.fps }}{% elif form_values.fps %}{{ form_values.fps }}{% else %}30{% endif %}"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select id="status" name="status"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="active" {% if camera.status == 'active' or form_values.status == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if camera.status == 'inactive' or form_values.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="flex items-center">
+                    <input type="checkbox" id="is_default" name="is_default"
+                           {% if camera.is_default or form_values.is_default %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <span class="ml-2 text-sm text-gray-700">Set as Default Camera</span>
+                </label>
+                <p class="mt-1 ml-6 text-xs text-gray-500">The default camera will be used automatically in face attendance</p>
+            </div>
+        </div>
+
+        <div class="flex justify-end mt-6">
+            <button type="submit" class="inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                <i data-lucide="save" class="w-5 h-5 mr-2"></i>
+                {% if camera %}Update Camera{% else %}Save Camera{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize Lucide icons if needed specifically on this page
+    lucide.createIcons();
+
+    // Show/hide camera type specific settings
+    const cameraTypeSelect = document.getElementById('camera_type');
+    const usbSettings = document.getElementById('usb_settings');
+    const ipSettings = document.getElementById('ip_settings');
+    const ipAddressInput = document.getElementById('ip_address');
+    const streamUrlInput = document.getElementById('stream_url');
+
+    function toggleCameraSettings() {
+        const cameraType = cameraTypeSelect.value;
+        
+        if (cameraType === 'usb') {
+            usbSettings.style.display = 'block';
+            ipSettings.style.display = 'none';
+            // Remove required attribute from IP fields
+            ipAddressInput.removeAttribute('required');
+            streamUrlInput.removeAttribute('required');
+        } else {
+            usbSettings.style.display = 'none';
+            ipSettings.style.display = 'block';
+            // Add required attribute to IP fields
+            ipAddressInput.setAttribute('required', 'required');
+            streamUrlInput.setAttribute('required', 'required');
+        }
+    }
+
+    // Initialize on page load
+    toggleCameraSettings();
+
+    // Update when camera type changes
+    cameraTypeSelect.addEventListener('change', toggleCameraSettings);
+</script>
+{% endblock %}

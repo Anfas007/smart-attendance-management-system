@@ -1,0 +1,165 @@
+{% extends "core/base_admin.html" %}
+{% load static %}
+
+{% block title %}Attendance Dashboard{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <!-- Header -->
+    <div class="bg-white/80 backdrop-blur-sm shadow-lg border-b border-white/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        Attendance Dashboard
+                    </h1>
+                    <p class="text-slate-600 mt-1">Welcome back, {{ request.user.username }}!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Mark Attendance Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-1 gap-8 mb-8">
+            <!-- Mark Attendance Card -->
+            <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border border-white/20">
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg mb-6">
+                        <i data-lucide="camera" class="w-10 h-10 text-white"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-3">Mark Attendance</h3>
+                    <p class="text-gray-600 mb-6 max-w-md mx-auto">
+                    </p>
+
+                    <!-- Current Session Status -->
+                    {% if request.session.attendance_session_active %}
+                    <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+                        <div class="flex items-center justify-center">
+                            <div class="w-3 h-3 bg-green-500 rounded-full mr-3 animate-pulse"></div>
+                            <span class="text-green-800 font-medium">Attendance Session Active</span>
+                        </div>
+                        <p class="text-green-700 text-sm mt-1">
+                            {% if request.session.selected_course_id and request.session.selected_semester_id %}
+                                {% load custom_filters %}
+                                Session: {{ request.session.selected_course_id|get_course_name }} - {{ request.session.selected_semester_id|get_semester_name }}
+                            {% else %}
+                                Session not configured
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% else %}
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                        <div class="flex items-center justify-center">
+                            <div class="w-3 h-3 bg-amber-500 rounded-full mr-3"></div>
+                            <span class="text-amber-800 font-medium">No Active Session</span>
+                        </div>
+                        <p class="text-amber-700 text-sm mt-1">Click below to start a new attendance session</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="{% url 'face_attendance' %}" class="inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                            <i data-lucide="play-circle" class="w-6 h-6 mr-3"></i>
+                            {% if request.session.attendance_session_active %}
+                                Continue Session
+                            {% else %}
+                                Start Attendance
+                            {% endif %}
+                        </a>
+
+                        {% if request.session.attendance_session_active %}
+                        <a href="{% url 'end_attendance_session' %}" class="inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                            <i data-lucide="stop-circle" class="w-6 h-6 mr-3"></i>
+                            End Session
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Initialize Lucide icons
+lucide.createIcons();
+
+// Chart.js configurations
+const chartConfig = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            display: false
+        }
+    },
+    scales: {
+        y: {
+            beginAtZero: true,
+            grid: {
+                color: '#f1f5f9',
+                drawBorder: false
+            },
+            ticks: {
+                color: '#64748b',
+                font: {
+                    size: 12
+                }
+            }
+        },
+        x: {
+            grid: {
+                display: false
+            },
+            ticks: {
+                color: '#64748b',
+                font: {
+                    size: 12
+                }
+            }
+        }
+    },
+    elements: {
+        point: {
+            radius: 4,
+            hoverRadius: 6
+        }
+    }
+};
+
+// Add smooth animations to cards
+const cards = document.querySelectorAll('[class*="hover:-translate-y-1"]');
+cards.forEach((card, index) => {
+    card.style.animationDelay = `${index * 100}ms`;
+    card.classList.add('animate-fade-in');
+});
+
+// Add custom CSS animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .animate-fade-in {
+        animation: fade-in 0.6s ease-out forwards;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

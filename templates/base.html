@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Attendance Dashboard{% endblock %}</title>
+    <!-- You can add CSS links here -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #f9f9f9;
+        }
+        header {
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        nav a {
+            margin-right: 15px;
+            text-decoration: none;
+            color: #333;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        main {
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+            box-shadow: 0 0 5px #ccc;
+        }
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #888;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Attendance Dashboard</h1>
+    <nav>
+        <a href="{% url 'admin_dashboard' %}">Admin Dashboard</a>
+        <a href="{% url 'student_dashboard' %}">Student Dashboard</a>
+        {% if user.is_authenticated %}
+            <span>Welcome, {{ user.username }}</span>
+            <a href="{% url 'logout' %}">Logout</a>
+        {% else %}
+            <a href="{% url 'login' %}">Login</a>
+        {% endif %}
+    </nav>
+</header>
+
+<main>
+    {% block content %}
+    <!-- Content from child templates will be injected here -->
+    {% endblock %}
+</main>
+
+<footer>
+    &copy; {{ current_year }} Your Organization Name
+</footer>
+
+</body>
+</html>

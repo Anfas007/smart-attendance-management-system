@@ -1,0 +1,751 @@
+{% extends "core/base_admin.html" %}
+{% load static %}
+
+{% block title %}Mark Attendance{% endblock %}
+
+{% block extra_styles %}
+<style>
+    #videoFeed {
+        width: 100%;
+        max-width: 800px; /* Increased from 640px */
+        height: 600px; /* Fixed height for larger display */
+        border: 2px solid #e5e7eb;
+        border-radius: 0.75rem;
+        background-color: #f8fafc;
+        object-fit: cover;
+    }
+    .status-box {
+        min-height: 100px; /* Increased for better display */
+    }
+    /* Add explicit form-input style (avoid @apply to remove warnings) */
+    .form-input {
+        margin-top: 0.25rem; /* mt-1 */
+        display: block;
+        width: 100%;
+        padding: 0.5rem 0.75rem; /* py-2 px-3 */
+        border: 1px solid #d1d5db; /* gray-300 */
+        border-radius: 0.375rem; /* rounded-md */
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* shadow-sm */
+        background-color: #fff;
+        color: #374151; /* text-gray-700 */
+        outline: none;
+        position: relative;
+        z-index: 1000; /* keep dropdown above other UI where possible */
+    }
+    .form-input:focus {
+        border-color: #3b82f6; /* blue-500 */
+        box-shadow: 0 0 0 4px rgba(59,130,246,0.12);
+    }
+
+    /* Compact camera selection */
+    .camera-select-compact {
+        max-width: 300px;
+    }
+
+    /* Compact time settings */
+    .time-settings-compact .time-setting-item {
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Status Modal Styles */
+    .status-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(3px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .status-modal-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .status-modal {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        max-width: 380px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        transform: scale(0.9) translateY(10px);
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .status-modal-overlay.show .status-modal {
+        transform: scale(1) translateY(0);
+    }
+
+    .status-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .status-icon.success {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .status-icon.error {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+
+    .status-icon.warning {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    .status-modal h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .status-modal p {
+        color: #6b7280;
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
+    }
+
+    .status-modal button {
+        background: #f3f4f6;
+        color: #374151;
+        border: none;
+        padding: 0.5rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .status-modal button:hover {
+        background: #e5e7eb;
+        transform: translateY(-1px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="flex justify-between items-center mb-8">
+    <div class="flex items-center space-x-4">
+         <button id="openSidebar" class="md:hidden mr-4 text-slate-700 hover:text-slate-900">
+             <i data-lucide="menu" class="w-6 h-6"></i>
+         </button>
+        <h1 class="text-2xl font-bold text-blue-700">Mark Attendance</h1>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-3 py-1 rounded-full text-sm font-medium">
+            <i data-lucide="lock" class="w-4 h-4 inline-block mr-1"></i>
+            Attendance Session Active
+        </div>
+    </div>
+    <div class="flex items-center space-x-4">
+        <a href="{% url 'end_attendance_session' %}" class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+            <i data-lucide="unlock" class="w-4 h-4 mr-2"></i>
+            End Attendance Session
+        </a>
+    </div>
+</header>
+
+{% if not selected_course or not selected_semester %}
+<!-- Compact Course and Semester Selection -->
+<div class="bg-white p-6 rounded-xl shadow-md mb-6 selection-card relative overflow-visible">
+    <h2 class="text-lg font-semibold mb-3 text-slate-800">Start Attendance Session</h2>
+    <p class="text-sm text-gray-600 mb-4">Select course and semester to begin marking attendance.</p>
+
+    <form method="GET" action="{% url 'face_attendance' %}">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
+            <div>
+                <label for="course_id" class="block text-sm font-medium text-gray-700 mb-1">Course</label>
+                <select id="course_id" name="course_id" required class="form-input">
+                    <option value="">Select Course</option>
+                    {% for course in courses %}
+                    <option value="{{ course.id }}">{{ course.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="semester_id" class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                <select id="semester_id" name="semester_id" required class="form-input">
+                    <option value="">Select Semester</option>
+                    {% for semester in semesters %}
+                    <option value="{{ semester.id }}">{{ semester.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="flex justify-end mt-4">
+            <button type="submit" class="inline-flex items-center px-6 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                <i data-lucide="play" class="w-4 h-4 mr-2"></i>
+                Start Session
+            </button>
+        </div>
+    </form>
+</div>
+{% else %}
+<!-- Compact Selected Course and Semester Display -->
+<div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center">
+            <i data-lucide="book-open" class="w-4 h-4 text-blue-600 mr-2"></i>
+            <span class="text-sm font-medium text-blue-800">
+                {{ selected_course.name }} - {{ selected_semester.name }}
+            </span>
+        </div>
+        <a href="{% url 'face_attendance' %}" class="text-blue-600 hover:text-blue-800 text-sm">
+            <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<div class="space-y-8">
+
+    <!-- Face Recognition Section -->
+    <div class="bg-white p-8 rounded-xl shadow-lg">
+        <!-- Compact Security Alert (hidden per request) -->
+        <!--
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
+            <div class="flex items-center">
+                <i data-lucide="shield" class="w-4 h-4 text-blue-600 mr-2"></i>
+                <span class="text-sm font-medium text-blue-800">Session Active</span>
+                <span class="text-sm text-blue-700 ml-2">• Locked for security</span>
+            </div>
+        </div>
+        -->
+
+        <!-- Compact Camera Selection -->
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center space-x-4">
+                <div>
+                    <label for="camera-select" class="block text-sm font-medium text-gray-700 mb-1">Camera</label>
+                    <select id="camera-select" class="camera-select-compact mt-1 block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        {% for camera in cameras %}
+                        <option value="{{ camera.id }}"
+                                data-type="{{ camera.camera_type }}"
+                                data-device-index="{{ camera.device_index }}"
+                                data-stream-url="{{ camera.stream_url }}"
+                                {% if camera.is_default %}selected{% endif %}>
+                            {{ camera.name }}
+                            {% if camera.is_default %}(Default){% endif %}
+                        </option>
+                        {% empty %}
+                        <option value="">No cameras</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="text-xs text-gray-500 mt-6">
+                    Select camera for recognition
+                </div>
+            </div>
+
+            <!-- Mode Toggle (visually obvious) -->
+            <div class="text-center">
+                <div id="modeToggleContainer" class="inline-flex items-center space-x-3 bg-blue-50 border border-blue-200 rounded-full px-3 py-2">
+                    <div class="flex items-center">
+                        <i data-lucide="zap" class="w-4 h-4 text-blue-600 mr-2"></i>
+                        <div class="text-sm font-medium text-gray-700">Mode: <span id="modeLabel" class="text-blue-600 font-semibold">Check-in</span></div>
+                    </div>
+                    <button id="toggleCheckoutMode" aria-pressed="false" class="ml-2 inline-flex items-center px-3 py-1 text-sm font-medium text-blue-600 bg-white border border-blue-200 rounded-full shadow-sm hover:bg-blue-50 transition">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i>
+                        <span id="toggleButtonLabel">Switch to Check-out</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="text-2xl font-bold mb-6 text-slate-800 text-center">Face Recognition Attendance</h2>
+        <div class="flex flex-col lg:flex-row gap-8 items-start">
+            <!-- Larger Video Feed -->
+            <div class="w-full lg:w-3/4">
+                 <video id="videoFeed" playsinline autoplay muted></video>
+                 <canvas id="canvas" style="display: none;"></canvas>
+                 <div class="mt-6 text-center">
+                     <button id="startStopButton" class="inline-flex items-center px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                         <i data-lucide="play-circle" class="w-6 h-6 mr-3"></i>
+                         Start Recognition
+                     </button>
+                 </div>
+            </div>
+            <!-- Enhanced Status Display -->
+            <div class="w-full lg:w-1/4">
+                <div class="status-box bg-gradient-to-br from-slate-50 to-blue-50 p-6 rounded-xl border border-slate-200 shadow-inner">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center">
+                        <i data-lucide="activity" class="w-5 h-5 mr-2 text-blue-600"></i>
+                        Status
+                    </h3>
+                    <div id="recognition-status" class="text-sm text-gray-700 font-medium leading-relaxed">
+                        Ready to start recognition
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compact Time Settings Section -->
+    <div class="bg-white p-4 rounded-xl shadow-md time-settings-compact">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-lg font-semibold text-slate-800">Time Settings</h3>
+            <div class="text-xs">
+                {% if request.user.is_staff %}
+                <a href="{% url 'admin:core_attendancesettings_changelist' %}" class="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700" target="_blank">
+                    <i data-lucide="settings" class="w-3 h-3 inline-block mr-1"></i>
+                    Manage in Admin Panel
+                </a>
+                {% else %}
+                <span class="text-gray-500">Manage in Admin Panel (staff only)</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="time-setting-item bg-green-50 border border-green-200 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-green-800">Present</span>
+                    <span class="text-sm font-bold text-green-700">{{ settings.present_cutoff|time:"g:i A" }}</span>
+                </div>
+                <p class="text-xs text-green-600 mt-1">Before this time</p>
+            </div>
+
+            <div class="time-setting-item bg-amber-50 border border-amber-200 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-amber-800">Late</span>
+                    <span class="text-sm font-bold text-amber-700">{{ settings.late_cutoff|time:"g:i A" }}</span>
+                </div>
+                <p class="text-xs text-amber-600 mt-1">Between present & late cutoff</p>
+            </div>
+
+            <div class="time-setting-item bg-red-50 border border-red-200 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-red-800">Absent</span>
+                    <span class="text-sm font-bold text-red-700">After {{ settings.late_cutoff|time:"g:i A" }}</span>
+                </div>
+                <p class="text-xs text-red-600 mt-1">After late cutoff</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Status Modal -->
+<div id="statusModal" class="status-modal-overlay">
+    <div class="status-modal">
+        <div id="statusIcon" class="status-icon">
+            <!-- Icon will be set by JavaScript -->
+        </div>
+        <h3 id="statusTitle">Status</h3>
+        <p id="statusMessage">Message will be set by JavaScript</p>
+        <button id="statusModalClose">OK</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons(); // Initialize any icons added in this template
+
+    const videoElement = document.getElementById('videoFeed');
+    const canvasElement = document.getElementById('canvas');
+    const statusElement = document.getElementById('recognition-status');
+    const startStopButton = document.getElementById('startStopButton');
+    const cameraSelect = document.getElementById('camera-select');
+    const recognizeUrl = "{% url 'recognize_face' %}"; // Django URL for the API
+    const csrfToken = "{{ csrf_token }}"; // CSRF token
+
+    let stream = null;
+    let processingInterval = null;
+    let isProcessing = false; // Flag to prevent overlapping requests
+    let animationFrameId = null; // To control the loop
+
+    // Function to start the camera feed
+    async function startCamera() {
+        try {
+            const selectedCamera = cameraSelect.options[cameraSelect.selectedIndex];
+            const cameraType = selectedCamera.getAttribute('data-type');
+            const deviceIndex = parseInt(selectedCamera.getAttribute('data-device-index'));
+            const streamUrl = selectedCamera.getAttribute('data-stream-url');
+
+            if (cameraType === 'ip') {
+                // For IP cameras, we need to handle stream URL
+                // In a browser, we can't directly access RTSP streams
+                // You might need to convert RTSP to WebRTC or use an HTTP stream
+                statusElement.textContent = 'IP cameras require special streaming setup. Using default camera instead.';
+                // Fall back to default camera or show error
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            } else {
+                // For USB cameras, try to use the specific device
+                // Note: Browser API doesn't allow selecting by index directly
+                // We need to enumerate devices and match
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                let constraints = { video: { width: 640, height: 480 }, audio: false };
+                
+                // If we have multiple devices and a valid index, try to select it
+                if (videoDevices.length > deviceIndex && deviceIndex >= 0) {
+                    constraints.video.deviceId = { exact: videoDevices[deviceIndex].deviceId };
+                }
+
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            }
+
+            videoElement.srcObject = stream;
+            await videoElement.play(); // Ensure video plays before proceeding
+            statusElement.textContent = 'Camera started. Processing frames...';
+            startStopButton.textContent = 'Stop Recognition';
+            startStopButton.className = 'inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2';
+            
+            // Start processing loop
+            isProcessing = false; // Reset flag
+            cancelAnimationFrame(animationFrameId); // Clear previous loop if any
+            processFrames(); // Start the loop
+
+        } catch (err) {
+            console.error("Error accessing camera:", err);
+            showStatusModal(`Error accessing camera: ${err.name}. Check permissions.`, 'error');
+            statusElement.textContent = `Error accessing camera: ${err.name}. Check permissions.`;
+            startStopButton.textContent = 'Start Recognition';
+            startStopButton.className = 'inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2';
+        }
+    }
+
+    // Function to stop the camera feed and processing
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            videoElement.srcObject = null;
+            stream = null;
+        }
+        cancelAnimationFrame(animationFrameId); // Stop the processing loop
+        animationFrameId = null;
+        recognizedStudents.clear(); // Reset recognized students when camera stops
+        statusElement.textContent = 'Camera feed stopped.';
+        startStopButton.textContent = 'Start Recognition';
+        startStopButton.className = 'inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2';
+        console.log("Camera and processing stopped.");
+    }
+
+    let isCheckoutMode = false;
+
+    // Status Modal Functions
+    let recognizedStudents = new Set(); // Track students already recognized to avoid duplicate popups
+    let isStatusModalShowing = false; // Flag to prevent showing multiple error popups simultaneously
+    let lastErrorMessage = ''; // Track the last error message shown
+    let lastErrorTime = 0; // Track when the last error popup was shown
+    const ERROR_COOLDOWN = 5000; // 5 seconds cooldown between same error messages
+    
+    function showStatusModal(message, type = 'info') {
+        const currentTime = Date.now();
+        
+        // For error and warning messages, implement cooldown to prevent spam
+        if (type === 'error' || type === 'warning') {
+            // If this is the same error message shown recently, don't show it again
+            if (message === lastErrorMessage && (currentTime - lastErrorTime) < ERROR_COOLDOWN) {
+                return;
+            }
+            
+            // Update last error tracking
+            lastErrorMessage = message;
+            lastErrorTime = currentTime;
+        }
+        
+        // Prevent showing multiple popups simultaneously
+        if (isStatusModalShowing) {
+            return;
+        }
+        
+        const modal = document.getElementById('statusModal');
+        const iconElement = document.getElementById('statusIcon');
+        const titleElement = document.getElementById('statusTitle');
+        const messageElement = document.getElementById('statusMessage');
+
+        // Set flag
+        isStatusModalShowing = true;
+
+        // Set message
+        messageElement.textContent = message;
+
+        // Set type-specific styling and icon
+        let iconSvg = '';
+        let title = 'Status';
+
+        switch (type) {
+            case 'success':
+                iconElement.className = 'status-icon success';
+                iconSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20,6 9,17 4,12"></polyline>
+                </svg>`;
+                title = 'Success';
+                break;
+            case 'error':
+                iconElement.className = 'status-icon error';
+                iconSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>`;
+                title = 'Error';
+                break;
+            case 'warning':
+                iconElement.className = 'status-icon warning';
+                iconSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>`;
+                title = 'Warning';
+                break;
+            default:
+                iconElement.className = 'status-icon warning';
+                iconSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>`;
+                title = 'Status';
+        }
+
+        iconElement.innerHTML = iconSvg;
+        titleElement.textContent = title;
+
+        // Show modal
+        modal.classList.add('show');
+
+        // Auto-close after 3 seconds
+        setTimeout(() => {
+            hideStatusModal();
+        }, 3000);
+    }
+
+    function hideStatusModal() {
+        const modal = document.getElementById('statusModal');
+        modal.classList.remove('show');
+        // Reset flag after animation completes
+        setTimeout(() => {
+            isStatusModalShowing = false;
+        }, 300);
+    }
+
+    // Enhanced toggle visuals for clarity
+    const modeLabel = document.getElementById('modeLabel');
+    const modeToggleContainer = document.getElementById('modeToggleContainer');
+    const toggleButtonLabel = document.getElementById('toggleButtonLabel');
+    const toggleButtonEl = document.getElementById('toggleCheckoutMode');
+
+    function updateModeVisuals() {
+        if (!modeLabel || !modeToggleContainer || !toggleButtonLabel || !toggleButtonEl) return;
+        if (isCheckoutMode) {
+            modeLabel.textContent = 'Check-out';
+            modeLabel.className = 'text-green-600 font-semibold';
+            toggleButtonEl.setAttribute('aria-pressed', 'true');
+            toggleButtonEl.className = 'ml-2 inline-flex items-center px-3 py-1 text-sm font-medium text-green-700 bg-white border border-green-200 rounded-full shadow-sm hover:bg-green-50 transition';
+            toggleButtonLabel.textContent = 'Switch to Check-in';
+            modeToggleContainer.className = 'inline-flex items-center space-x-3 bg-green-50 border border-green-200 rounded-full px-3 py-2';
+        } else {
+            modeLabel.textContent = 'Check-in';
+            modeLabel.className = 'text-blue-600 font-semibold';
+            toggleButtonEl.setAttribute('aria-pressed', 'false');
+            toggleButtonEl.className = 'ml-2 inline-flex items-center px-3 py-1 text-sm font-medium text-blue-600 bg-white border border-blue-200 rounded-full shadow-sm hover:bg-blue-50 transition';
+            toggleButtonLabel.textContent = 'Switch to Check-out';
+            modeToggleContainer.className = 'inline-flex items-center space-x-3 bg-blue-50 border border-blue-200 rounded-full px-3 py-2';
+        }
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function toggleMode() {
+        isCheckoutMode = !isCheckoutMode;
+        updateModeVisuals();
+    }
+
+    // initialize visuals
+    updateModeVisuals();
+
+    // Function to capture frame, send to backend, and handle response
+    async function captureAndRecognize() {
+        if (isProcessing || !stream || !videoElement.srcObject || videoElement.paused || videoElement.ended || videoElement.readyState < 3) {
+            return;
+        }
+
+        isProcessing = true; // Set flag
+
+        // Draw video frame onto canvas
+        const context = canvasElement.getContext('2d');
+        canvasElement.width = videoElement.videoWidth;
+        canvasElement.height = videoElement.videoHeight;
+        if (canvasElement.width === 0 || canvasElement.height === 0) {
+             console.log("Waiting for video dimensions...");
+             isProcessing = false;
+             return; // Skip if video dimensions aren't ready
+        }
+        context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+
+        // Convert canvas to base64 data URL
+        const imageDataUrl = canvasElement.toDataURL('image/jpeg', 0.8); // Use JPEG, adjust quality if needed
+
+        // Include camera ID in the request
+        const selectedCamera = cameraSelect.options[cameraSelect.selectedIndex];
+        const cameraId = selectedCamera.value;
+
+        try {
+             const url = isCheckoutMode ? "{% url 'checkout_student' %}" : recognizeUrl;
+             const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken // Include CSRF token
+                },
+                body: JSON.stringify({ 
+                    image_data: imageDataUrl,
+                    camera_id: cameraId  // Send camera ID to backend
+                })
+            });
+
+            const result = await response.json(); // Try to parse JSON regardless of status
+
+            if (!response.ok) {
+                console.error("API Error:", response.status, result); // Log the parsed JSON error message
+                showStatusModal(`Error ${response.status}: ${result.message || 'Failed to process frame.'}`, 'error');
+                statusElement.textContent = `Error ${response.status}: ${result.message || 'Failed to process frame.'}`;
+            } else {
+                console.log("Recognition result:", result); // Debugging
+
+                // Update status display based on backend response
+                if (result.status === 'success') {
+                    const successMessage = `Recognized: ${result.name} - ${result.attendance_status || result.message}`;
+                    // Only show popup for new recognitions
+                    if (!recognizedStudents.has(result.name)) {
+                        showStatusModal(successMessage, 'success');
+                        recognizedStudents.add(result.name);
+                    }
+                    statusElement.innerHTML = `<span class="text-green-600 font-semibold">Recognized: ${result.name}</span><br><span class="text-sm">${result.attendance_status || result.message}</span>`;
+                } else if (result.status === 'session_mismatch') {
+                    const mismatchMessage = `${result.name} - ${result.message}`;
+                    // Only show popup for new session mismatches
+                    if (!recognizedStudents.has(`${result.name}_mismatch`)) {
+                        showStatusModal(mismatchMessage, 'warning');
+                        recognizedStudents.add(`${result.name}_mismatch`);
+                    }
+                    statusElement.innerHTML = `<span class="text-red-600 font-semibold">⚠️ ${result.name}</span><br><span class="text-sm text-red-700">${result.message}</span>`;
+                } else if (result.status === 'already_checked_out') {
+                    const checkoutMessage = `${result.name} - ${result.message}`;
+                    // Only show popup for new checkout attempts
+                    if (!recognizedStudents.has(`${result.name}_checked_out`)) {
+                        showStatusModal(checkoutMessage, 'warning');
+                        recognizedStudents.add(`${result.name}_checked_out`);
+                    }
+                    statusElement.innerHTML = `<span class="text-orange-600 font-semibold">${result.name}</span><br><span class="text-sm">${result.message}</span>`;
+                } else if (result.status === 'not_recognized') {
+                    showStatusModal('Face detected, but not recognized.', 'warning');
+                    statusElement.textContent = 'Face detected, but not recognized.';
+                } else if (result.status === 'no_face') {
+                    showStatusModal('No face detected in the frame.', 'warning');
+                    statusElement.textContent = 'No face detected in the frame.';
+                } else if (result.status === 'error') {
+                    showStatusModal(`Error: ${result.message}`, 'error');
+                    statusElement.textContent = `Error: ${result.message}`;
+                } else {
+                     statusElement.textContent = 'Processing...'; // Default/idle
+                }
+            }
+        } catch (error) {
+            console.error("Fetch Error or JSON Parse Error:", error);
+            showStatusModal('Network error, server unavailable, or invalid response.', 'error');
+            statusElement.textContent = 'Network error, server unavailable, or invalid response.';
+        } finally {
+            isProcessing = false; // Reset flag after request completes (or fails)
+        }
+    }
+
+    // Processing loop using requestAnimationFrame
+    function processFrames() {
+         if (!stream) return; // Stop loop if stream is stopped
+
+         captureAndRecognize().then(() => {
+             // Schedule the next frame processing only if the stream is still active
+             if (stream) {
+                  // Introduce a slight delay (e.g., 500ms) to reduce load
+                  setTimeout(() => {
+                      if(stream) { // Check again in case stopCamera was called during timeout
+                          animationFrameId = requestAnimationFrame(processFrames);
+                      }
+                  }, 500); // 500ms delay = ~2 recognitions per second
+             }
+         }).catch(error => {
+             console.error("Error in capture/recognize promise:", error);
+              // Optionally stop loop on error or just continue after delay
+             if (stream) {
+                 setTimeout(() => {
+                      if(stream) {
+                         animationFrameId = requestAnimationFrame(processFrames);
+                      }
+                 }, 500);
+             }
+         });
+    }
+
+
+    // Event listeners for the buttons
+    startStopButton.addEventListener('click', () => {
+        if (stream) {
+            stopCamera();
+        } else {
+            startCamera();
+        }
+    });
+
+    // Handle camera selection changes - restart camera if running
+    cameraSelect.addEventListener('change', () => {
+        if (stream) {
+            stopCamera();
+            // Give a small delay before restarting with new camera
+            setTimeout(() => {
+                startCamera();
+            }, 100);
+        }
+    });
+
+    // Toggle visibility of Course/Semester selects to avoid overlap
+    const toggleCourse = document.getElementById('toggle-course');
+    const toggleSemester = document.getElementById('toggle-semester');
+    const courseSelectWrapper = document.getElementById('course_id')?.closest('div');
+    const semesterSelectWrapper = document.getElementById('semester_id')?.closest('div');
+
+    function updateSelectVisibility() {
+        if (courseSelectWrapper) {
+            courseSelectWrapper.style.display = toggleCourse.checked ? '' : 'none';
+        }
+        if (semesterSelectWrapper) {
+            semesterSelectWrapper.style.display = toggleSemester.checked ? '' : 'none';
+        }
+    }
+
+    if (toggleCourse) toggleCourse.addEventListener('change', updateSelectVisibility);
+    if (toggleSemester) toggleSemester.addEventListener('change', updateSelectVisibility);
+    // Initialize visibility on load
+    updateSelectVisibility();
+
+    document.getElementById('toggleCheckoutMode').addEventListener('click', toggleMode);
+
+    // Status Modal Close Button
+    document.getElementById('statusModalClose').addEventListener('click', hideStatusModal);
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', stopCamera);
+
+</script>
+{% endblock %}
+

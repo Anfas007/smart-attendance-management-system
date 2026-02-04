@@ -1,0 +1,185 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Dynamically set the title -->
+    <title>{% block title %}Admin Panel{% endblock %} | Attendance System</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .sidebar-link { display: flex; align-items: center; padding: 0.75rem 1.25rem; color: #374151; border-radius: 0.5rem; transition: all 0.2s ease; white-space: nowrap; font-weight: 500; }
+        .sidebar-link:hover { background-color: #ffffff; color: #1f2937; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transform: translateX(4px); }
+        /* Active link styling using request.path comparison */
+         .sidebar-link.active { background-color: #fbbf24; color: #1f2937; font-weight: 600; border-left: 4px solid #f59e0b; box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3); }
+        .sidebar { transition: transform 0.3s ease-in-out; }
+        .sidebar-hidden { transform: translateX(-100%); }
+        /* Button styles (copied from manage_courses) */
+        .btn { @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2; }
+        .btn-success { @apply text-white bg-green-600 hover:bg-green-700 focus:ring-green-500; }
+        .btn-secondary { @apply text-gray-700 bg-gray-200 hover:bg-gray-300 focus:ring-gray-500 border-gray-300; }
+        .btn-danger { @apply text-white bg-red-600 hover:bg-red-700 focus:ring-red-500; }
+        .btn-sm { @apply px-3 py-1.5 text-xs; }
+         /* Message styles */
+        .message { @apply px-4 py-3 rounded-lg mb-4 text-sm; }
+        .message-success { @apply bg-green-100 border border-green-400 text-green-700; }
+        .message-error { @apply bg-red-100 border border-red-400 text-red-700; }
+        .message-warning { @apply bg-yellow-100 border border-yellow-400 text-yellow-700; }
+        .message-info { @apply bg-blue-100 border border-blue-400 text-blue-700; }
+         /* Add custom styles specific to the base template if needed */
+         {% block extra_styles %}{% endblock %}
+    </style>
+</head>
+<body class="bg-white text-gray-900">
+    <div class="flex min-h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-40 w-64 bg-gray-100 text-gray-700 flex flex-col p-4 md:relative md:translate-x-0 sidebar-hidden md:block" style="background-color: #f5f6fa;">
+            <div class="flex items-center justify-between p-4 border-b border-gray-200 mb-4">
+                <h1 class="text-2xl font-bold text-gray-900">Admin Panel</h1>
+                <button id="closeSidebar" class="md:hidden text-gray-500 hover:text-gray-700">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <nav class="mt-4 flex-1 space-y-1">
+                {% url 'admin_dashboard' as dashboard_url %}
+                {% url 'register_student' as register_url %}
+                {% url 'manage_students' as students_url %}
+                {% url 'manage_courses' as courses_url %}
+                {% url 'manage_sessions' as sessions_url %}
+                {% url 'manage_semesters' as semesters_url %}
+                {% url 'manage_departments' as departments_url %}
+                {% url 'manage_leave' as leave_url %}
+                {% url 'manage_cameras' as cameras_url %}
+                <!-- === CORRECTED URL NAME ASSIGNMENT === -->
+                {% url 'face_attendance' as mark_url %}
+                <!-- === END CORRECTION === -->
+                {% url 'attendance_details' as details_url %}
+
+                <a href="{{ dashboard_url }}" class="sidebar-link {% if request.path == dashboard_url %}active{% endif %}">
+                    <i data-lucide="layout-grid" class="w-5 h-5 mr-4 flex-shrink-0 text-yellow-500"></i><span>Dashboard</span>
+                </a>
+                <a href="{{ register_url }}" class="sidebar-link {% if request.path == register_url %}active{% endif %}">
+                    <i data-lucide="user-plus" class="w-5 h-5 mr-4 flex-shrink-0 text-yellow-500"></i><span>Register Student</span>
+                </a>
+                <a href="{{ students_url }}" class="sidebar-link {% if request.path == students_url %}active{% endif %}">
+                    <i data-lucide="users" class="w-5 h-5 mr-4 flex-shrink-0 text-yellow-500"></i><span>Manage Students</span>
+                </a>
+                <a href="{{ courses_url }}" class="sidebar-link {% if request.resolver_match.url_name in 'manage_courses,add_course,edit_course' %}active{% endif %}">
+                    <i data-lucide="book-open" class="w-5 h-5 mr-4 flex-shrink-0 text-yellow-500"></i><span>Manage Courses</span>
+                </a>
+                <a href="{{ sessions_url }}" class="sidebar-link {% if request.resolver_match.url_name in 'manage_sessions,add_session,edit_session' %}active{% endif %}">
+                     <i data-lucide="calendar-days" class="w-5 h-5 mr-4 flex-shrink-0 text-yellow-500"></i><span>Manage Session</span>
+                 </a>
+                <a href="{{ semesters_url }}" class="sidebar-link {% if request.resolver_match.url_name in 'manage_semesters,add_semester,edit_semester' %}active{% endif %}">
+                    <i data-lucide="graduation-cap" class="w-5 h-5 mr-4 flex-shrink-0 text-yellow-500"></i><span>Manage Semester</span>
+                </a>
+                <a href="{{ departments_url }}" class="sidebar-link {% if request.resolver_match.url_name in 'manage_departments,add_department,edit_department' %}active{% endif %}">
+                    <i data-lucide="building" class="w-5 h-5 mr-4 flex-shrink-0 text-yellow-500"></i><span>Manage Department</span>
+                </a>
+                <a href="{{ leave_url }}" class="sidebar-link {% if request.path == leave_url %}active{% endif %}">
+                    <i data-lucide="calendar-off" class="w-5 h-5 mr-4 flex-shrink-0 text-yellow-500"></i><span>Manage Leave</span>
+                </a>
+                <a href="{{ cameras_url }}" class="sidebar-link {% if request.resolver_match.url_name in 'manage_cameras,add_camera,edit_camera' %}active{% endif %}">
+                    <i data-lucide="camera" class="w-5 h-5 mr-4 flex-shrink-0 text-yellow-500"></i><span>Manage Camera</span>
+                </a>
+                <!-- === CORRECTED HREF ATTRIBUTE === -->
+                <a href="{{ mark_url }}" class="sidebar-link {% if request.path == mark_url %}active{% endif %}">
+                <!-- === END CORRECTION === -->
+                    <i data-lucide="file-pen-line" class="w-5 h-5 mr-4 flex-shrink-0 text-yellow-500"></i><span>Mark Attendance</span>
+                </a>
+                <a href="{{ details_url }}" class="sidebar-link {% if request.path == details_url %}active{% endif %}">
+                    <i data-lucide="clipboard-list" class="w-5 h-5 mr-4 flex-shrink-0 text-yellow-500"></i><span>Attendance Details</span>
+                </a>
+            </nav>
+            <div class="p-4 mt-auto border-t border-gray-200">
+                <a href="{% url 'logout' %}" class="flex items-center justify-center w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5 mr-2 flex-shrink-0"></i><span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Overlay for mobile -->
+        <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-6 lg:p-10 w-full overflow-y-auto bg-white">
+             <!-- Mobile Header with Menu Button -->
+            <div class="flex items-center justify-start mb-6 md:hidden">
+                 <button id="openSidebar" class="mr-4 text-gray-600 hover:text-gray-800">
+                     <i data-lucide="menu" class="w-6 h-6"></i>
+                 </button>
+                 <!-- You might want a title here too for mobile -->
+            </div>
+
+            <!-- Content Block: This is where child templates will insert their content -->
+            {% block content %}
+                <!-- Default content if no block is provided -->
+                <p>This is the base template content.</p>
+            {% endblock %}
+        </main>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // SweetAlert2 - Display Django Messages
+        {% if messages %}
+            {% for message in messages %}
+                Swal.fire({
+                    title: '{% if message.tags == "success" %}Success!{% elif message.tags == "error" %}Error!{% elif message.tags == "warning" %}Warning!{% elif message.tags == "info" %}Info{% else %}Notice{% endif %}',
+                    html: '{{ message|escapejs }}',
+                    icon: '{% if message.tags == "success" %}success{% elif message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% elif message.tags == "info" %}info{% else %}info{% endif %}',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '{% if message.tags == "success" %}#10b981{% elif message.tags == "error" %}#ef4444{% elif message.tags == "warning" %}#f59e0b{% else %}#3b82f6{% endif %}',
+                    timer: {% if message.tags == "success" %}3000{% else %}5000{% endif %},
+                    timerProgressBar: true,
+                    showClass: {
+                        popup: 'animate__animated animate__fadeInDown'
+                    },
+                    hideClass: {
+                        popup: 'animate__animated animate__fadeOutUp'
+                    }
+                });
+            {% endfor %}
+        {% endif %}
+
+        // Sidebar toggle script (remains the same)
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const openSidebar = document.getElementById('openSidebar');
+        const closeSidebar = document.getElementById('closeSidebar');
+
+        openSidebar?.addEventListener('click', () => {
+             sidebar?.classList.remove('sidebar-hidden');
+             overlay?.classList.remove('hidden');
+        });
+
+        closeSidebar?.addEventListener('click', () => {
+             sidebar?.classList.add('sidebar-hidden');
+             overlay?.classList.add('hidden');
+        });
+
+        overlay?.addEventListener('click', () => {
+             sidebar?.classList.add('sidebar-hidden');
+             overlay?.classList.add('hidden');
+        });
+    </script>
+    <!-- Block for extra JavaScript needed by child templates -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+

@@ -1,0 +1,75 @@
+{% extends "core/base_admin.html" %}
+{% load static %}
+
+{% block title %}Manage Sessions{% endblock %}
+
+{% block content %}
+<header class="flex justify-between items-center mb-8">
+    <div class="flex items-center space-x-4">
+        {# The mobile menu button is now inherited from base_admin.html #}
+        <button id="openSidebar" class="md:hidden mr-4 text-slate-700 hover:text-slate-900">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+       <h1 class="text-2xl font-bold text-blue-700">Manage Sessions</h1>
+    </div>
+    <!-- Add New Session Button -->
+    <a href="{% url 'add_session' %}" class="inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        <i data-lucide="calendar" class="w-5 h-5 mr-2"></i>
+        Add New Session
+    </a>
+</header>
+
+<!-- Session List Table -->
+<div class="bg-white p-6 rounded-xl shadow-md">
+     <h2 class="text-xl font-semibold mb-4 text-slate-800">Existing Sessions</h2>
+     <div class="overflow-x-auto">
+         <table class="w-full text-left">
+             <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
+                 <tr>
+                     <th class="px-4 py-3">Session Year</th>
+                     <th class="px-4 py-3 text-right">Actions</th>
+                 </tr>
+             </thead>
+             <tbody>
+                 {% for session in sessions %}
+                 <tr class="border-b hover:bg-slate-50">
+                     <td class="px-4 py-3 text-sm text-gray-700">{{ session.year }}</td>
+                     <td class="p-4 text-right">
+                        <div class="flex items-center justify-end space-x-2">
+                            <!-- Edit Button -->
+                            <a href="{% url 'edit_session' session.id %}" class="inline-flex items-center justify-center p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors" title="Edit Session">
+                                <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                            </a>
+                            <!-- Delete Button Form -->
+                            <form method="POST" action="{% url 'delete_session' session.id %}" class="inline-block" onsubmit="return confirm('Are you sure you want to delete session {{ session.year }}?');">
+                                {% csrf_token %}
+                                <button type="submit" class="inline-flex items-center justify-center p-1.5 text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-colors" title="Delete Session">
+                                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </form>
+                        </div>
+                     </td>
+                 </tr>
+                 {% empty %}
+                 <tr>
+                     <td colspan="2" class="px-4 py-6 text-center text-gray-500">
+                         No sessions found. Click "Add New Session" to get started.
+                         <!-- Optional Samples -->
+                         <div class="mt-4 text-xs opacity-60">
+                             Samples: 2023-2024, 2024-2025
+                         </div>
+                     </td>
+                 </tr>
+                 {% endfor %}
+             </tbody>
+         </table>
+     </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Re-initialize icons if dynamically added
+    lucide.createIcons();
+</script>
+{% endblock %}

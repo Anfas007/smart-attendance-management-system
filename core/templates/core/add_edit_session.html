@@ -1,0 +1,56 @@
+{% extends "core/base_admin.html" %}
+{% load static %}
+
+{% block title %}
+    {% if session %}Edit Session{% else %}Add New Session{% endif %}
+{% endblock %}
+
+{% block content %}
+<header class="flex justify-between items-center mb-8">
+    <div class="flex items-center space-x-4">
+        <button id="openSidebar" class="md:hidden mr-4 text-slate-700 hover:text-slate-900">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+        <h1 class="text-2xl font-bold text-blue-700">
+            {% if session %}Edit Session: {{ session.year }}{% else %}Add New Session{% endif %}
+        </h1>
+    </div>
+    <a href="{% url 'manage_sessions' %}" class="text-blue-600 hover:text-blue-800 flex items-center">
+        &larr; Back to Manage Sessions
+    </a>
+</header>
+
+<div class="bg-white p-6 rounded-xl shadow-md max-w-lg mx-auto">
+    <form method="POST">
+        {% csrf_token %}
+        <div class="mb-4">
+            <label for="year" class="block text-sm font-medium text-gray-700 mb-2">Session Year</label>
+            <input 
+                type="text" 
+                id="year" 
+                name="year" 
+                class="form-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" 
+                placeholder="e.g., 2023-2024, 2024-2025"
+                {# Corrected: Ensure the value attribute is properly enclosed in quotes and Django template tags #}
+                value="{% if session %}{{ session.year }}{% elif posted_data %}{{ posted_data.year }}{% endif %}"
+                required
+            >
+        </div>
+        
+        <div class="flex justify-end mt-6">
+            <button type="submit" class="inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                <i data-lucide="save" class="w-5 h-5 mr-2"></i>
+                {% if session %}Save Changes{% else %}Save Session{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Re-initialize lucide icons if needed
+    lucide.createIcons();
+</script>
+{% endblock %}
+

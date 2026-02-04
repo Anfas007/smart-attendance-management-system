@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flatpickr Test</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .datepicker { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>Flatpickr Test</h1>
+    <input type="text" class="datepicker" placeholder="DD/MM/YYYY">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Testing Flatpickr...');
+            const input = document.querySelector('.datepicker');
+            if (input) {
+                flatpickr(input, {
+                    dateFormat: "d/m/Y",
+                    allowInput: true,
+                    placeholder: "DD/MM/YYYY"
+                });
+                console.log('Flatpickr initialized successfully');
+            }
+        });
+    </script>
+</body>
+</html>

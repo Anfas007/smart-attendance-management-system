@@ -1,0 +1,10 @@
+SHELL=/bin/bash
+DJANGO_SETTINGS_MODULE=attendance_system.settings
+
+# Auto-checkout students who haven't checked out after 1 day
+# This runs daily at midnight and checks out students from the previous day
+# who still have blank checkout times
+0 0 * * * cd /path/to/your/project && python manage.py auto_checkout --days=1 --checkout-time=23:59 >> /path/to/your/project/logs/auto_checkout.log 2>&1
+
+# Alternative: Run every 6 hours to catch students who may have forgotten to check out
+# 0 */6 * * * cd /path/to/your/project && python manage.py auto_checkout --days=1 --checkout-time=23:59 >> /path/to/your/project/logs/auto_checkout.log 2>&1

@@ -1,0 +1,556 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard | Attendance System</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for a modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons for nice icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        /* Use the Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Modern gradient background */
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .gradient-bg-alt {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .gradient-bg-card {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .animate-pulse-slow {
+            animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .hover-lift {
+            transition: all 0.3s ease;
+        }
+
+        .hover-lift:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .stat-card:hover::before {
+            left: 100%;
+        }
+
+        .nav-link {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -5px;
+            left: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .nav-link:hover::after {
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 min-h-screen">
+
+    <!-- Animated Background Elements -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute -top-40 -right-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float"></div>
+        <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float" style="animation-delay: -2s;"></div>
+        <div class="absolute top-40 left-1/2 w-80 h-80 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float" style="animation-delay: -4s;"></div>
+    </div>
+
+    <div class="relative z-10 flex flex-col min-h-screen">
+        <!-- Modern Navigation Bar -->
+        <nav class="glass-effect w-full sticky top-0 z-20 shadow-lg">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="graduation-cap" class="w-6 h-6 text-white"></i>
+                        </div>
+                        <div class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            Student Dashboard
+                        </div>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-1">
+                        <a href="#" class="nav-link text-gray-700 hover:text-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all duration-300">
+                            <i data-lucide="home" class="w-4 h-4 mr-2"></i> Home
+                        </a>
+                        <a href="{% url 'attendance' %}" class="nav-link text-gray-700 hover:text-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all duration-300">
+                           <i data-lucide="calendar-check" class="w-4 h-4 mr-2"></i> Attendance
+                        </a>
+                        <a href="{% url 'courses' %}" class="nav-link text-gray-700 hover:text-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all duration-300">
+                            <i data-lucide="book-open" class="w-4 h-4 mr-2"></i> Courses
+                        </a>
+                        <a href="{% url 'apply_leave' %}" class="nav-link text-gray-700 hover:text-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all duration-300">
+                            <i data-lucide="file-plus-2" class="w-4 h-4 mr-2"></i> Apply Leave
+                        </a>
+                        <a href="{% url 'leave_status' %}" class="nav-link text-gray-700 hover:text-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all duration-300">
+                            <i data-lucide="clipboard-list" class="w-4 h-4 mr-2"></i> Leave Status
+                        </a>
+                        <div class="h-6 w-px bg-gray-300 mx-2"></div>
+                        <form method="POST" action="{% url 'logout' %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105">
+                                <i data-lucide="log-out" class="w-4 h-4 mr-2"></i> Logout
+                            </button>
+                        </form>
+                    </div>
+                    <!-- Mobile menu button -->
+                    <div class="md:hidden">
+                        <button class="text-gray-700 hover:text-blue-600 p-2">
+                            <i data-lucide="menu" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 lg:p-8">
+            <div class="max-w-7xl mx-auto space-y-8">
+
+                <!-- Welcome Header -->
+                <div class="glass-card rounded-3xl p-8 hover-lift">
+                    <div class="flex flex-col lg:flex-row items-center justify-between">
+                        <div class="flex items-center space-x-6 mb-6 lg:mb-0">
+                            <div class="relative">
+                                {% if student.profile_image %}
+                                    <img src="{{ student.profile_image.url }}" class="w-20 h-20 rounded-2xl object-cover shadow-xl border-4 border-white" alt="Student Avatar">
+                                {% else %}
+                                    <div class="w-20 h-20 gradient-bg rounded-2xl flex items-center justify-center shadow-xl border-4 border-white">
+                                        <span class="text-2xl font-bold text-white">{{ student.name|first|default:'?' }}</span>
+                                    </div>
+                                {% endif %}
+                                <div class="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
+                                    <i data-lucide="check" class="w-4 h-4 text-white"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h1 class="text-xl lg:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                                    Welcome back, {{ student.name|truncatechars:20 }}!
+                                </h1>
+                                <p class="text-gray-600 mt-1 flex items-center">
+                                    <i data-lucide="map-pin" class="w-4 h-4 mr-1"></i>
+                                    Roll No: {{ student.roll_no }} • {{ student.course }} • {{ student.semester }} 
+
+                
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-blue-600">{{ attendance_stats.percentage|default:'0' }}%</div>
+                                <div class="text-sm text-gray-600">Attendance Rate</div>
+                            </div>
+                            <div class="w-px h-12 bg-gray-300"></div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-green-600">{{ attendance_stats.present|default:'0' }}</div>
+                                <div class="text-sm text-gray-600">Days Present</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                    <!-- Profile Card -->
+                    <div class="lg:col-span-1">
+                        <div class="glass-card rounded-3xl p-6 hover-lift h-fit">
+                            <div class="text-center mb-6">
+                                <h3 class="text-xl font-bold text-gray-900 mb-2">Profile Overview</h3>
+                                <p class="text-gray-600 text-sm">Your academic information</p>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="flex items-center p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
+                                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                        <i data-lucide="book-open" class="w-5 h-5 text-blue-600"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500 uppercase tracking-wide">Course</p>
+                                        <p class="font-semibold text-gray-900">{{ student.course }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl">
+                                    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                                        <i data-lucide="building" class="w-5 h-5 text-purple-600"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500 uppercase tracking-wide">Department</p>
+                                        <p class="font-semibold text-gray-900">{{ student.department }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl">
+                                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                                        <i data-lucide="calendar" class="w-5 h-5 text-green-600"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500 uppercase tracking-wide">Session</p>
+                                        <p class="font-semibold text-gray-900">{{ student.session }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center p-3 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl">
+                                    <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                                        <i data-lucide="clock" class="w-5 h-5 text-orange-600"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500 uppercase tracking-wide">Semester</p>
+                                        <p class="font-semibold text-gray-900">{{ student.semester }}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 pt-6 border-t border-gray-200">
+                                <h4 class="font-semibold text-gray-900 mb-3">Contact Information</h4>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex items-center text-gray-600">
+                                        <i data-lucide="mail" class="w-4 h-4 mr-2"></i>
+                                        {{ student.email }}
+                                    </div>
+                                    {% if student.contact %}
+                                    <div class="flex items-center text-gray-600">
+                                        <i data-lucide="phone" class="w-4 h-4 mr-2"></i>
+                                        {{ student.contact }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats & Attendance -->
+                    <div class="lg:col-span-2 space-y-8">
+
+                        <!-- Attendance Statistics Cards -->
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                                <i data-lucide="bar-chart-3" class="w-6 h-6 mr-3 text-blue-600"></i>
+                                Attendance Overview
+                            </h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <!-- Attendance Percentage -->
+                                <div class="stat-card glass-card rounded-2xl p-6 hover-lift group">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div class="w-12 h-12 gradient-bg-card rounded-xl flex items-center justify-center shadow-lg">
+                                            <i data-lucide="pie-chart" class="w-6 h-6 text-white"></i>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-2xl font-bold text-gray-900">{{ attendance_stats.percentage|default:'0' }}%</p>
+                                            <p class="text-xs text-gray-500">This Month</p>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <p class="text-sm font-semibold text-gray-900">Overall Attendance</p>
+                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                            <div class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500" style="width: {{ attendance_stats.percentage|default:'0' }}%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Total Present -->
+                                <div class="stat-card glass-card rounded-2xl p-6 hover-lift group">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                                            <i data-lucide="check-circle" class="w-6 h-6 text-white"></i>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-2xl font-bold text-gray-900">{{ attendance_stats.present|default:'0' }}</p>
+                                            <p class="text-xs text-gray-500">Days</p>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <p class="text-sm font-semibold text-gray-900">Present Days</p>
+                                        <p class="text-xs text-green-600 flex items-center">
+                                            <i data-lucide="trending-up" class="w-3 h-3 mr-1"></i>
+                                            On time attendance
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Total Absent -->
+                                <div class="stat-card glass-card rounded-2xl p-6 hover-lift group">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div class="w-12 h-12 bg-gradient-to-br from-red-400 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
+                                            <i data-lucide="x-circle" class="w-6 h-6 text-white"></i>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-2xl font-bold text-gray-900">{{ attendance_stats.absent|default:'0' }}</p>
+                                            <p class="text-xs text-gray-500">Days</p>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <p class="text-sm font-semibold text-gray-900">Absent Days</p>
+                                        <p class="text-xs text-red-600 flex items-center">
+                                            <i data-lucide="alert-triangle" class="w-3 h-3 mr-1"></i>
+                                            Needs improvement
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Total Late -->
+                                <div class="stat-card glass-card rounded-2xl p-6 hover-lift group">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div class="w-12 h-12 bg-gradient-to-br from-orange-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg">
+                                            <i data-lucide="clock" class="w-6 h-6 text-white"></i>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-2xl font-bold text-gray-900">{{ attendance_stats.late|default:'0' }}</p>
+                                            <p class="text-xs text-gray-500">Days</p>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <p class="text-sm font-semibold text-gray-900">Late Arrivals</p>
+                                        <p class="text-xs text-orange-600 flex items-center">
+                                            <i data-lucide="clock-3" class="w-3 h-3 mr-1"></i>
+                                            Try to be on time
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Attendance Table -->
+                        <div class="glass-card rounded-3xl p-6 hover-lift">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                                    <i data-lucide="history" class="w-5 h-5 mr-2 text-blue-600"></i>
+                                    Recent Attendance
+                                </h3>
+                                <a href="{% url 'attendance' %}" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center transition-colors">
+                                    View All <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                                </a>
+                            </div>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead>
+                                        <tr class="border-b border-gray-200">
+                                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Date</th>
+                                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Status</th>
+                                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Check-in</th>
+                                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Check-out</th>
+                                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Duration</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        {% for record in recent_attendance %}
+                                        <tr class="hover:bg-gray-50 transition-colors">
+                                            <td class="py-4 px-4">
+                                                <div class="flex items-center">
+                                                    <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                                        <i data-lucide="calendar" class="w-4 h-4 text-blue-600"></i>
+                                                    </div>
+                                                    <span class="font-medium text-gray-900">{{ record.date|date:"M j, Y" }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="py-4 px-4">
+                                                {% if record.status == 'present' %}
+                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                        <i data-lucide="check-circle" class="w-3 h-3 mr-1"></i>
+                                                        Present
+                                                    </span>
+                                                {% elif record.status == 'absent' %}
+                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                        <i data-lucide="x-circle" class="w-3 h-3 mr-1"></i>
+                                                        Absent
+                                                    </span>
+                                                {% elif record.status == 'late' %}
+                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                                        <i data-lucide="clock" class="w-3 h-3 mr-1"></i>
+                                                        Late
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="py-4 px-4">
+                                                <span class="font-medium text-gray-900">{{ record.check_in_time|time:"H:i"|default:'-' }}</span>
+                                            </td>
+                                            <td class="py-4 px-4">
+                                                <span class="font-medium text-gray-900">{{ record.check_out_time|time:"H:i"|default:'-' }}</span>
+                                            </td>
+                                            <td class="py-4 px-4">
+                                                <span class="font-medium text-gray-900">{{ record.duration|default:'-' }}</span>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="5" class="py-12 text-center">
+                                                <div class="flex flex-col items-center">
+                                                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                                        <i data-lucide="calendar-x" class="w-8 h-8 text-gray-400"></i>
+                                                    </div>
+                                                    <h3 class="text-lg font-medium text-gray-900 mb-1">No attendance records</h3>
+                                                    <p class="text-gray-500">Your recent attendance will appear here</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <a href="{% url 'apply_leave' %}" class="glass-card rounded-2xl p-6 hover-lift group">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="text-lg font-semibold text-gray-900 mb-1">Apply for Leave</h4>
+                                        <p class="text-gray-600 text-sm">Request time off from classes</p>
+                                    </div>
+                                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                                        <i data-lucide="file-plus-2" class="w-6 h-6 text-white"></i>
+                                    </div>
+                                </div>
+                            </a>
+
+                            <a href="{% url 'leave_status' %}" class="glass-card rounded-2xl p-6 hover-lift group">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="text-lg font-semibold text-gray-900 mb-1">Leave Status</h4>
+                                        <p class="text-gray-600 text-sm">Check your leave requests</p>
+                                    </div>
+                                    <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                                        <i data-lucide="clipboard-list" class="w-6 h-6 text-white"></i>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Script to initialize icons and animations -->
+    <script>
+        lucide.createIcons();
+
+        // Add smooth scrolling and animations
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animate stat cards on scroll
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, observerOptions);
+
+            // Initially hide stat cards
+            document.querySelectorAll('.stat-card').forEach(card => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(card);
+            });
+
+            // Add hover effects for navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-2px)';
+                });
+                link.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+        });
+
+        // SweetAlert2 - Display Django Messages
+        {% if messages %}
+            {% for message in messages %}
+                Swal.fire({
+                    title: '{% if message.tags == "success" %}Success!{% elif message.tags == "error" %}Error!{% elif message.tags == "warning" %}Warning!{% elif message.tags == "info" %}Info{% else %}Notice{% endif %}',
+                    html: '{{ message|escapejs }}',
+                    icon: '{% if message.tags == "success" %}success{% elif message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% elif message.tags == "info" %}info{% else %}info{% endif %}',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '{% if message.tags == "success" %}#10b981{% elif message.tags == "error" %}#ef4444{% elif message.tags == "warning" %}#f59e0b{% else %}#3b82f6{% endif %}',
+                    timer: {% if message.tags == "success" %}3000{% else %}5000{% endif %},
+                    timerProgressBar: true,
+                    showClass: {
+                        popup: 'animate__animated animate__fadeInDown'
+                    },
+                    hideClass: {
+                        popup: 'animate__animated animate__fadeOutUp'
+                    }
+                });
+            {% endfor %}
+        {% endif %}
+    </script>
+
+</body>
+</html>
+

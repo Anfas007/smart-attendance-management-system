@@ -1,0 +1,193 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Courses | Attendance System</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for a modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons for nice icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        /* Use the Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f9ff; /* A nice light blue */
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="flex flex-col min-h-screen">
+        <!-- Top Navigation Bar (Consistent with other pages) -->
+        <nav class="bg-white shadow-md w-full sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center">
+                        <a href="{% url 'student_dashboard' %}" class="flex-shrink-0 text-xl font-bold text-blue-600">
+                           Student Dashboard
+                        </a>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-4">
+                        <a href="{% url 'student_dashboard' %}" class="text-gray-600 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+                            <i data-lucide="home" class="w-4 h-4 mr-2"></i> Home
+                        </a>
+                        <a href="{% url 'attendance' %}" class="text-gray-600 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+                           <i data-lucide="calendar-check" class="w-4 h-4 mr-2"></i> Attendance
+                        </a>
+                        <a href="{% url 'courses' %}" class="bg-blue-100 text-blue-700 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+                             <i data-lucide="book-open" class="w-4 h-4 mr-2"></i> Courses
+                        </a>
+                        <a href="{% url 'apply_leave' %}" class="text-gray-600 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+                            <i data-lucide="file-plus-2" class="w-4 h-4 mr-2"></i> Apply Leave
+                        </a>
+                        <form method="POST" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="text-red-500 hover:bg-red-100 hover:text-red-700 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+                                <i data-lucide="log-out" class="w-4 h-4 mr-2"></i> Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 lg:p-10">
+            <div class="max-w-7xl mx-auto">
+                <header class="mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900">My Courses</h1>
+                    <p class="text-gray-500 mt-1">Here are the courses you are currently enrolled in.</p>
+                </header>
+
+                <!-- Courses Grid -->
+                {% if is_admin %}
+                    <!-- Admin View: Show all courses with stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {% for course_stat in course_stats %}
+                        <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
+                            <div class="flex-shrink-0">
+                                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                    <i data-lucide="book-marked" class="w-6 h-6 text-blue-600"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow mt-4">
+                                <h3 class="text-xl font-bold text-gray-900">{{ course_stat.course.name }}</h3>
+                                <p class="text-sm text-gray-500 mt-2">
+                                    <strong>Department:</strong> {{ course_stat.department.name }}
+                                </p>
+                                <p class="text-sm text-gray-500 mt-1">
+                                    <strong>Active Students:</strong> {{ course_stat.active_students }}
+                                </p>
+                                <p class="text-sm text-gray-500 mt-1">
+                                    <strong>Pending Leaves:</strong> {{ course_stat.recent_leaves }}
+                                </p>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-span-1 md:col-span-2 lg:col-span-3 bg-white p-8 rounded-2xl shadow-lg text-center text-gray-500">
+                            <p>No courses have been created yet.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <!-- Student View: Show enrolled course and classmates -->
+                    {% if course %}
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Student's Course -->
+                        <div class="bg-white p-6 rounded-2xl shadow-lg">
+                            <div class="flex items-center mb-4">
+                                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mr-4">
+                                    <i data-lucide="book-marked" class="w-6 h-6 text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-gray-900">{{ course.name }}</h3>
+                                    <p class="text-sm text-gray-500">Department: {{ department.name }}</p>
+                                </div>
+                            </div>
+                            <div class="space-y-2 text-sm text-gray-600">
+                                {% if course.teacher %}
+                                <p><strong>Teacher:</strong> {{ course.teacher }}</p>
+                                {% endif %}
+                                {% if course.description %}
+                                <p><strong>Description:</strong> {{ course.description }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Classmates -->
+                        <div class="bg-white p-6 rounded-2xl shadow-lg">
+                            <h3 class="text-lg font-bold text-gray-900 mb-4">Classmates ({{ classmate_count }})</h3>
+                            <div class="space-y-3 max-h-64 overflow-y-auto">
+                                {% for classmate in classmates %}
+                                <div class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50">
+                                    {% if classmate.profile_image %}
+                                        <img src="{{ classmate.profile_image.url }}" class="w-8 h-8 rounded-full object-cover" alt="Profile">
+                                    {% else %}
+                                        <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                                            <span class="text-xs font-medium text-gray-600">{{ classmate.name|first|default:'?' }}</span>
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">{{ classmate.name }}</p>
+                                        <p class="text-xs text-gray-500">Roll: {{ classmate.roll_no }}</p>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <p class="text-sm text-gray-500">No other students in your course yet.</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="bg-white p-8 rounded-2xl shadow-lg text-center text-gray-500">
+                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="book-x" class="w-8 h-8 text-gray-400"></i>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">Not Enrolled</h3>
+                        <p>You are not currently enrolled in any courses. Please contact your administrator to get enrolled.</p>
+                    </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Script to initialize icons -->
+    <script>
+        lucide.createIcons();
+
+        // SweetAlert2 - Display Django Messages
+        {% if messages %}
+            {% for message in messages %}
+                Swal.fire({
+                    title: '{% if message.tags == "success" %}Success!{% elif message.tags == "error" %}Error!{% elif message.tags == "warning" %}Warning!{% elif message.tags == "info" %}Info{% else %}Notice{% endif %}',
+                    html: '{{ message|escapejs }}',
+                    icon: '{% if message.tags == "success" %}success{% elif message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% elif message.tags == "info" %}info{% else %}info{% endif %}',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '{% if message.tags == "success" %}#10b981{% elif message.tags == "error" %}#ef4444{% elif message.tags == "warning" %}#f59e0b{% else %}#3b82f6{% endif %}',
+                    timer: {% if message.tags == "success" %}3000{% else %}5000{% endif %},
+                    timerProgressBar: true,
+                    showClass: {
+                        popup: 'animate__animated animate__fadeInDown'
+                    },
+                    hideClass: {
+                        popup: 'animate__animated animate__fadeOutUp'
+                    }
+                });
+            {% endfor %}
+        {% endif %}
+    </script>
+
+</body>
+</html>

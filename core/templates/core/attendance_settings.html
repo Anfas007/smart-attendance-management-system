@@ -1,0 +1,79 @@
+{% extends "core/base_admin.html" %}
+{% load static %}
+
+{% block title %}Attendance Time Settings{% endblock %}
+
+{% block content %}
+<header class="flex justify-between items-center mb-8">
+    <div class="flex items-center space-x-4">
+        <button id="openSidebar" class="md:hidden mr-4 text-slate-700 hover:text-slate-900">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+        <h1 class="text-2xl font-bold text-blue-700">Attendance Time Settings</h1>
+    </div>
+</header>
+
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white p-6 rounded-xl shadow-md">
+        <form method="POST">
+            {% csrf_token %}
+            
+            <div class="space-y-6">
+                <!-- Present Cutoff Time -->
+                <div>
+                    <label for="present_cutoff" class="block text-sm font-medium text-gray-700">Present Cutoff Time</label>
+                    <div class="mt-1 relative">
+                        <input type="time" 
+                               id="present_cutoff" 
+                               name="present_cutoff" 
+                               required 
+                               value="{{ settings.present_cutoff|time:'H:i' }}"
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <p class="mt-1 text-sm text-gray-500">Students arriving before this time will be marked as "Present"</p>
+                </div>
+
+                <!-- Late Cutoff Time -->
+                <div>
+                    <label for="late_cutoff" class="block text-sm font-medium text-gray-700">Late Cutoff Time</label>
+                    <div class="mt-1 relative">
+                        <input type="time" 
+                               id="late_cutoff" 
+                               name="late_cutoff" 
+                               required 
+                               value="{{ settings.late_cutoff|time:'H:i' }}"
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <p class="mt-1 text-sm text-gray-500">Students arriving between Present Cutoff and this time will be marked as "Late". After this time, students will be marked as "Absent".</p>
+                </div>
+
+                <!-- Current Settings Display -->
+                <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Current Settings:</h3>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        <li>Present: Before {{ settings.present_cutoff|time:"g:i A" }}</li>
+                        <li>Late: {{ settings.present_cutoff|time:"g:i A" }} - {{ settings.late_cutoff|time:"g:i A" }}</li>
+                        <li>Absent: After {{ settings.late_cutoff|time:"g:i A" }}</li>
+                    </ul>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex justify-end pt-6">
+                    <button type="submit" class="inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        <i data-lucide="save" class="w-5 h-5 mr-2"></i>
+                        Save Settings
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        lucide.createIcons();
+    });
+</script>
+{% endblock %}

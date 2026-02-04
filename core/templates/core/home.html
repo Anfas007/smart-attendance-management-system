@@ -1,0 +1,184 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance System | Home</title>
+    <link rel="stylesheet" href="{% static 'core/style.css' %}">
+    
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        /* Fullscreen blue theme home page */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+            background-color: #e6f0fa;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Center vertically */
+            align-items: center;     /* Center horizontally */
+            width: 100%;
+            padding: 20px;
+        }
+
+        header {
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            padding: 20px;
+            position: absolute;
+            top: 0;
+            box-sizing: border-box;
+        }
+
+        .btn-logout, .btn-action {
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-logout {
+            background-color: #1E88E5;
+            color: white;
+        }
+
+        .btn-logout:hover {
+            background-color: #1565C0;
+        }
+
+        .hero {
+            background-color: #2196F3;
+            color: #fff;
+            padding: 80px 40px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 900px;
+            width: 100%;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .hero p {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+        }
+
+        .btn-login-hero {
+            background-color: #fff;
+            color: #2196F3;
+            border: 2px solid #fff;
+            padding: 15px 30px;
+            border-radius: 6px;
+            font-weight: bold;
+            text-decoration: none;
+            font-size: 1rem;
+        }
+
+        .btn-login-hero:hover {
+            background-color: #f0f8ff;
+            color: #1565C0;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-top: 40px;
+        }
+
+        .card-action {
+            flex: 1 1 250px;
+            background-color: #BBDEFB;
+            padding: 40px 25px;
+            border-radius: 10px;
+            text-align: center;
+            text-decoration: none;
+            color: #0D47A1;
+            font-weight: bold;
+            font-size: 1.2rem;
+            transition: transform 0.3s, background-color 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .card-action:hover {
+            background-color: #90CAF9;
+            transform: translateY(-6px);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        {% if user.is_authenticated %}
+            <a href="{% url 'logout' %}" class="btn-logout">Logout</a>
+        {% else %}
+            <a href="{% url 'login' %}" class="btn-action">Login</a>
+        {% endif %}
+    </header>
+
+    <div class="dashboard-container">
+        <div class="hero">
+            <h1>Welcome to Smart Attendance</h1>
+            <p>Track attendance efficiently with face recognition technology</p>
+            {% if not user.is_authenticated %}
+                <a href="{% url 'login' %}" class="btn-login-hero">Login to Get Started</a>
+            {% endif %}
+        </div>
+
+        {% if user.is_authenticated %}
+        <section class="actions">
+            {% if user.is_admin %}
+                <a href="{% url 'admin_dashboard' %}" class="card-action">Admin Dashboard</a>
+            {% elif user.is_student %}
+                <a href="{% url 'student_dashboard' %}" class="card-action">Student Dashboard</a>
+            {% endif %}
+        </section>
+        {% endif %}
+    </div>
+</body>
+
+<!-- SweetAlert2 - Display Django Messages -->
+<script>
+    {% if messages %}
+        {% for message in messages %}
+            Swal.fire({
+                title: '{% if message.tags == "success" %}Success!{% elif message.tags == "error" %}Error!{% elif message.tags == "warning" %}Warning!{% elif message.tags == "info" %}Info{% else %}Notice{% endif %}',
+                html: '{{ message|escapejs }}',
+                icon: '{% if message.tags == "success" %}success{% elif message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% elif message.tags == "info" %}info{% else %}info{% endif %}',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '{% if message.tags == "success" %}#10b981{% elif message.tags == "error" %}#ef4444{% elif message.tags == "warning" %}#f59e0b{% else %}#3b82f6{% endif %}',
+                timer: {% if message.tags == "success" %}3000{% else %}5000{% endif %},
+                timerProgressBar: true,
+                showClass: {
+                    popup: 'animate__animated animate__fadeInDown'
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__fadeOutUp'
+                }
+            });
+        {% endfor %}
+    {% endif %}
+</script>
+
+</html>

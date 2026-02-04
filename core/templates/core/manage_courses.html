@@ -1,0 +1,69 @@
+{% extends "core/base_admin.html" %}
+{% load static %}
+
+{% block title %}Manage Courses{% endblock %}
+
+{% block content %}
+<header class="flex justify-between items-center mb-8">
+    <div class="flex items-center space-x-4">
+        <button id="openSidebar" class="md:hidden mr-4 text-slate-700 hover:text-slate-900">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+        <h1 class="text-2xl font-bold text-blue-700">Manage Courses</h1>
+    </div>
+    <!-- Add New Course Button - Updated Style -->
+    <a href="{% url 'add_course' %}" class="inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        <i data-lucide="book-open" class="w-5 h-5 mr-2"></i>
+        Add New Course
+    </a>
+</header>
+
+<!-- Course Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for course in courses %}
+        <div class="bg-white p-5 rounded-xl shadow-md flex flex-col justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-blue-800">{{ course.name }}</h3>
+                <p class="text-sm text-gray-500 mb-1">Department: {{ course.department.name }}</p>
+                <p class="text-sm text-gray-700 mt-2">{{ course.description|default:"No description available."|truncatewords:20 }}</p>
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-end space-x-2">
+                <!-- Edit Button -->
+                <a href="{% url 'edit_course' course.id %}" class="inline-flex items-center justify-center p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors" title="Edit Course">
+                    <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                </a>
+                <!-- Delete Button Form -->
+                <form method="POST" action="{% url 'delete_course' course.id %}" class="inline-block" onsubmit="return confirm('Are you sure you want to delete this course?');">
+                    {% csrf_token %}
+                    <button type="submit" class="inline-flex items-center justify-center p-1.5 text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-colors" title="Delete Course">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    {% empty %}
+        <div class="md:col-span-2 lg:col-span-3 text-center text-gray-500 py-10">
+            <p>No courses found. Click "Add New Course" to get started.</p>
+            <!-- Optional: Display sample courses if list is empty -->
+            <div class="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-50">
+                <div class="bg-gray-50 p-5 rounded-xl shadow-inner border flex flex-col justify-between">
+                    <div><h3 class="text-lg font-semibold text-gray-600">Sample: Introduction to Python</h3><p class="text-sm text-gray-500 mb-1">Department: Computer Science</p><p class="text-sm text-gray-700 mt-2">Learn the basics of Python programming...</p></div>
+                    <div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-end space-x-2"><button class="btn btn-secondary btn-sm" disabled>Edit</button><button class="btn btn-danger btn-sm" disabled>Delete</button></div>
+                </div>
+                <div class="bg-gray-50 p-5 rounded-xl shadow-inner border flex flex-col justify-between">
+                    <div><h3 class="text-lg font-semibold text-gray-600">Sample: Calculus I</h3><p class="text-sm text-gray-500 mb-1">Department: Mathematics</p><p class="text-sm text-gray-700 mt-2">Fundamental concepts of calculus...</p></div>
+                    <div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-end space-x-2"><button class="btn btn-secondary btn-sm" disabled>Edit</button><button class="btn btn-danger btn-sm" disabled>Delete</button></div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Re-initialize icons if dynamically added
+    lucide.createIcons();
+</script>
+{% endblock %}
+
