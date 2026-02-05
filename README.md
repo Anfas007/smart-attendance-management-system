@@ -58,7 +58,7 @@ SYSTEM WORKFLOW
 
 INSTALLATION AND SETUP
 
-•	git clone https://github.com/your-username/smart-attendance-system.git
+•	git clone https://github.com/Anfas007/smart-attendance-management-system.git
 
 •	cd smart-attendance-system
 
